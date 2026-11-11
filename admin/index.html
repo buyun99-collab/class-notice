@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>교실 공지 보내기</title>
+<style>
+  :root { --blue:#1565c0; --red:#d32f2f; --bg:#f4f6f9; --line:#dde2ea; --ink:#1d232c; --sub:#69727f; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font-family:-apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; }
+  header { background:var(--blue); color:#fff; padding:14px 18px; display:flex; align-items:center; justify-content:space-between; }
+  header h1 { font-size:19px; margin:0; }
+  header button { background:rgba(255,255,255,.18); color:#fff; border:0; border-radius:8px; padding:7px 12px; font-size:14px; cursor:pointer; }
+  main { max-width:860px; margin:0 auto; padding:14px; display:grid; gap:14px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .card h2 { font-size:15px; margin:0 0 10px; color:var(--sub); font-weight:600; }
+  label { display:block; font-size:14px; color:var(--sub); margin:10px 0 4px; }
+  input[type=text], input[type=number], textarea, select {
+    width:100%; font:inherit; font-size:16px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--ink); }
+  textarea { min-height:110px; resize:vertical; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .row > * { flex:1; min-width:120px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { border:1px solid var(--line); background:#fff; border-radius:999px; padding:8px 13px; font-size:15px; cursor:pointer; user-select:none; }
+  .chip.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+  .chip.all.on { background:#2e7d32; border-color:#2e7d32; }
+  .grade { margin-top:10px; }
+  .grade b { display:inline-block; min-width:56px; font-size:14px; color:var(--sub); }
+  .seg { display:flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .seg button { flex:1; border:0; background:#fff; padding:11px; font-size:15px; cursor:pointer; color:var(--ink); }
+  .seg button.on { background:var(--blue); color:#fff; }
+  .seg button.on.urgent { background:var(--red); }
+  .send { width:100%; border:0; border-radius:12px; padding:16px; font-size:18px; font-weight:700; color:#fff; background:var(--blue); cursor:pointer; }
+  .send.urgent { background:var(--red); }
+  .send:disabled { opacity:.5; cursor:default; }
+  .ghost { border:1px solid var(--line); background:#fff; border-radius:10px; padding:10px 14px; font-size:14px; cursor:pointer; color:var(--ink); }
+  .ghost.danger { color:var(--red); border-color:#f1c4c4; }
+  .msg { font-size:14px; min-height:20px; margin-top:8px; }
+  .msg.ok { color:#2e7d32; } .msg.err { color:var(--red); }
+  .hist { list-style:none; padding:0; margin:0; font-size:14px; }
+  .hist li { border-top:1px solid var(--line); padding:9px 2px; display:flex; gap:8px; justify-content:space-between; }
+  .hist li:first-child { border-top:0; }
+  .hist .t { color:var(--sub); white-space:nowrap; }
+  .hint { font-size:13px; color:var(--sub); margin-top:6px; line-height:1.5; }
+  #settings { display:none; }
+  #settings.open { display:block; }
+  .phr { display:flex; align-items:center; gap:2px; }
+  .phr .x { border:0; background:none; color:#aab; cursor:pointer; font-size:14px; padding:0 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📢 교실 공지 보내기</h1>
+  <button id="toggleSettings">설정</button>
+</header>
+
+<main>
+  <section class="card" id="settings">
+    <h2>설정 (이 기기에만 저장됨)</h2>
+    <label>채널 이름 (칠판 앱과 똑같이 입력)</label>
+    <div class="row">
+      <input type="text" id="topic" placeholder="예: chungmu-notice-x7k2p9q4" autocomplete="off" spellcheck="false">
+      <button class="ghost" id="genTopic" style="flex:0">새로 만들기</button>
+    </div>
+    <div class="hint">채널 이름이 곧 비밀번호입니다. 길고 추측하기 어렵게 만들고, 선생님들께만 알려 주세요.</div>
+    <label>서버 주소</label>
+    <input type="text" id="server" placeholder="https://ntfy.sh">
+    <label>학년별 반 수</label>
+    <div class="row">
+      <input type="number" id="g1" min="0" max="20" placeholder="1학년">
+      <input type="number" id="g2" min="0" max="20" placeholder="2학년">
+      <input type="number" id="g3" min="0" max="20" placeholder="3학년">
+    </div>
+    <label>그 밖의 장소 (쉼표로 구분)</label>
+    <input type="text" id="extra" placeholder="예: 교무실, 강당, 도서관">
+    <div class="row" style="margin-top:12px">
+      <button class="ghost" id="saveSettings">저장</button>
+    </div>
+    <div class="msg" id="setMsg"></div>
+  </section>
+
+  <section class="card">
+    <h2>받는 곳</h2>
+    <div class="chips"><span class="chip all on" id="allChip">전체 교실</span></div>
+    <div id="grades"></div>
+    <div class="hint" id="targetHint">전체 교실로 보냅니다.</div>
+  </section>
+
+  <section class="card">
+    <h2>공지 내용</h2>
+    <div class="chips" id="phrases"></div>
+    <label for="title">제목</label>
+    <input type="text" id="title" placeholder="예: 전교생 강당 집합" maxlength="60">
+    <label for="body">내용</label>
+    <textarea id="body" placeholder="예: 3교시 후 전교생은 강당으로 모여 주세요."></textarea>
+    <div class="row" style="margin-top:12px">
+      <div>
+        <label style="margin-top:0">종류</label>
+        <div class="seg" id="levelSeg">
+          <button data-v="normal" class="on">일반</button>
+          <button data-v="urgent" class="urgent">긴급 (경고음)</button>
+        </div>
+      </div>
+      <div>
+        <label style="margin-top:0">표시 시간</label>
+        <select id="sec">
+          <option value="30">30초</option>
+          <option value="60" selected>1분</option>
+          <option value="180">3분</option>
+          <option value="300">5분</option>
+          <option value="0">‘확인’ 누를 때까지</option>
+        </select>
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="ghost" id="savePhrase" style="flex:0; white-space:nowrap">자주 쓰는 문구로 저장</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <button class="send" id="send">공지 보내기</button>
+    <div class="msg" id="sendMsg"></div>
+    <div class="row" style="margin-top:6px">
+      <button class="ghost danger" id="closeAll">떠 있는 공지 모두 닫기</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>최근 보낸 공지 (이 기기)</h2>
+    <ul class="hist" id="hist"></ul>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var store = {
+    get: function (k, d) { try { var v = localStorage.getItem("cn_" + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set: function (k, v) { try { localStorage.setItem("cn_" + k, JSON.stringify(v)); } catch (e) {} }
+  };
+
+  var DEFAULT_PHRASES = [
+    { t: "전교생 강당 집합", b: "지금 바로 강당으로 모여 주세요." },
+    { t: "담임 선생님 교무실 호출", b: "담임 선생님께서는 잠시 교무실로 와 주세요." },
+    { t: "하교 시간 변경", b: "오늘 하교 시간이 변경되었습니다. 담임 선생님 안내에 따라 주세요." },
+    { t: "화재 대피 훈련", b: "곧 화재 대피 훈련이 시작됩니다. 안내 방송에 따라 이동하세요." }
+  ];
+
+  var cfg = store.get("cfg", { server: "https://ntfy.sh", topic: "", g: [8, 8, 8], extra: "교무실" });
+  var phrases = store.get("phrases", DEFAULT_PHRASES);
+  var history = store.get("history", []);
+  var selected = {};      // "1-3": true, "2-*": true ...
+  var level = "normal";
+
+  // ---------- 설정 ----------
+  function fillSettings() {
+    $("server").value = cfg.server || "https://ntfy.sh";
+    $("topic").value = cfg.topic || "";
+    $("g1").value = cfg.g[0]; $("g2").value = cfg.g[1]; $("g3").value = cfg.g[2];
+    $("extra").value = cfg.extra || "";
+  }
+  $("toggleSettings").onclick = function () { $("settings").classList.toggle("open"); };
+  $("genTopic").onclick = function () {
+    var abc = "abcdefghijkmnpqrstuvwxyz23456789", s = "";
+    var arr = new Uint32Array(14); crypto.getRandomValues(arr);
+    for (var i = 0; i < arr.length; i++) s += abc[arr[i] % abc.length];
+    $("topic").value = "school-notice-" + s;
+  };
+  $("saveSettings").onclick = function () {
+    var topic = $("topic").value.trim();
+    if (!/^[A-Za-z0-9_-]{8,64}$/.test(topic)) {
+      showMsg("setMsg", "채널 이름은 영문, 숫자, -, _ 로 8자 이상이어야 합니다.", false); return;
+    }
+    var server = $("server").value.trim() || "https://ntfy.sh";
+    if (!/^https?:\/\//.test(server)) server = "https://" + server;
+    cfg = {
+      server: server.replace(/\/+$/, ""), topic: topic,
+      g: [num($("g1").value), num($("g2").value), num($("g3").value)],
+      extra: $("extra").value.trim()
+    };
+    store.set("cfg", cfg);
+    selected = {}; drawTargets();
+    showMsg("setMsg", "저장했습니다.", true);
+  };
+  function num(v) { var n = parseInt(v, 10); return isNaN(n) || n < 0 ? 0 : Math.min(n, 20); }
+
+  // ---------- 받는 곳 ----------
+  function chip(text, key, cls) {
+    var el = document.createElement("span");
+    el.className = "chip" + (cls ? " " + cls : "") + (selected[key] ? " on" : "");
+    el.textContent = text;
+    el.onclick = function () {
+      if (selected[key]) delete selected[key]; else selected[key] = true;
+      // 학년 전체를 고르면 그 학년의 개별 반 선택은 지움
+      if (/^\d-\*$/.test(key) && selected[key]) {
+        Object.keys(selected).forEach(function (k) { if (k !== key && k.indexOf(key.charAt(0) + "-") === 0) delete selected[k]; });
+      } else if (/^\d-\d+$/.test(key)) {
+        delete selected[key.split("-")[0] + "-*"];
+      }
+      drawTargets();
+    };
+    return el;
+  }
+  function drawTargets() {
+    var box = $("grades"); box.innerHTML = "";
+    for (var g = 1; g <= 3; g++) {
+      var n = cfg.g[g - 1]; if (!n) continue;
+      var row = document.createElement("div"); row.className = "grade chips";
+      var b = document.createElement("b"); b.textContent = g + "학년"; row.appendChild(b);
+      row.appendChild(chip(g + "학년 전체", g + "-*"));
+      for (var c = 1; c <= n; c++) row.appendChild(chip(g + "-" + c, g + "-" + c));
+      box.appendChild(row);
+    }
+    var extras = (cfg.extra || "").split(/[,，]/).map(function (s) { return s.trim(); }).filter(Boolean);
+    if (extras.length) {
+      var r2 = document.createElement("div"); r2.className = "grade chips";
+      var b2 = document.createElement("b"); b2.textContent = "기타"; r2.appendChild(b2);
+      extras.forEach(function (x) { r2.appendChild(chip(x, x)); });
+      box.appendChild(r2);
+    }
+    var keys = Object.keys(selected);
+    $("allChip").classList.toggle("on", keys.length === 0);
+    $("targetHint").textContent = keys.length === 0
+      ? "전체 교실로 보냅니다."
+      : "보낼 곳: " + keys.map(function (k) { return k.replace(/^(\d)-\*$/, "$1학년 전체"); }).join(", ");
+  }
+  $("allChip").onclick = function () { selected = {}; drawTargets(); };
+
+  // ---------- 자주 쓰는 문구 ----------
+  function drawPhrases() {
+    var box = $("phrases"); box.innerHTML = "";
+    phrases.forEach(function (p, i) {
+      var w = document.createElement("span"); w.className = "chip phr";
+      var t = document.createElement("span"); t.textContent = p.t;
+      t.onclick = function () { $("title").value = p.t; $("body").value = p.b; };
+      var x = document.createElement("button"); x.className = "x"; x.textContent = "✕"; x.title = "삭제";
+      x.onclick = function (e) { e.stopPropagation(); phrases.splice(i, 1); store.set("phrases", phrases); drawPhrases(); };
+      w.appendChild(t); w.appendChild(x); box.appendChild(w);
+    });
+  }
+  $("savePhrase").onclick = function () {
+    var t = $("title").value.trim(); if (!t) return;
+    phrases.unshift({ t: t, b: $("body").value.trim() });
+    phrases = phrases.slice(0, 12); store.set("phrases", phrases); drawPhrases();
+  };
+
+  // ---------- 종류 ----------
+  Array.prototype.forEach.call($("levelSeg").querySelectorAll("button"), function (btn) {
+    btn.onclick = function () {
+      level = btn.getAttribute("data-v");
+      Array.prototype.forEach.call($("levelSeg").querySelectorAll("button"), function (o) { o.classList.toggle("on", o === btn); });
+      $("send").classList.toggle("urgent", level === "urgent");
+      $("send").textContent = level === "urgent" ? "긴급 공지 보내기" : "공지 보내기";
+    };
+  });
+
+  // ---------- 보내기 ----------
+  function publish(payload) {
+    if (!cfg.topic) {
+      $("settings").classList.add("open");
+      return Promise.reject(new Error("먼저 ‘설정’에서 채널 이름을 저장해 주세요."));
+    }
+    payload.topic = cfg.topic;
+    return fetch(cfg.server.replace(/\/+$/, "") + "/", { method: "POST", body: JSON.stringify(payload) })
+      .then(function (r) {
+        if (!r.ok) return r.text().then(function (t) { throw new Error("서버 응답 " + r.status + " " + t); });
+        return r.json();
+      });
+  }
+  $("send").onclick = function () {
+    var title = $("title").value.trim(), body = $("body").value.trim();
+    if (!title && !body) { showMsg("sendMsg", "제목이나 내용을 입력해 주세요.", false); return; }
+    var targets = Object.keys(selected);
+    var tags = targets.map(function (k) { return "to:" + k; });
+    tags.push("sec:" + $("sec").value);
+    if (level === "urgent") tags.push("urgent");
+    var where = targets.length ? targets.map(function (k) { return k.replace(/^(\d)-\*$/, "$1학년"); }).join(", ") : "전체";
+    if (level === "urgent" && !confirm("긴급 공지를 [" + where + "] 칠판에 경고음과 함께 띄웁니다. 보낼까요?")) return;
+
+    var btn = $("send"); btn.disabled = true;
+    publish({ title: title, message: body, priority: level === "urgent" ? 5 : 3, tags: tags })
+      .then(function () {
+        showMsg("sendMsg", "보냈습니다 → " + where, true);
+        history.unshift({ at: Date.now(), title: title || body.slice(0, 20), where: where, urgent: level === "urgent" });
+        history = history.slice(0, 20); store.set("history", history); drawHistory();
+      })
+      .catch(function (e) { showMsg("sendMsg", "보내지 못했습니다: " + e.message, false); })
+      .then(function () { btn.disabled = false; });
+  };
+  $("closeAll").onclick = function () {
+    if (!confirm("모든 칠판에 떠 있는 공지를 닫을까요?")) return;
+    publish({ title: "공지 닫기", message: "close", tags: ["cmd:close"] })
+      .then(function () { showMsg("sendMsg", "모든 칠판의 공지를 닫았습니다.", true); })
+      .catch(function (e) { showMsg("sendMsg", "보내지 못했습니다: " + e.message, false); });
+  };
+
+  // ---------- 기록 ----------
+  function drawHistory() {
+    var ul = $("hist"); ul.innerHTML = "";
+    if (!history.length) { ul.innerHTML = '<li><span class="t">아직 보낸 공지가 없습니다.</span></li>'; return; }
+    history.forEach(function (h) {
+      var li = document.createElement("li");
+      var a = document.createElement("span"); a.textContent = (h.urgent ? "🚨 " : "") + h.title + "  (" + h.where + ")";
+      var t = document.createElement("span"); t.className = "t";
+      var d = new Date(h.at); t.textContent = (d.getMonth() + 1) + "/" + d.getDate() + " " + d.toTimeString().slice(0, 5);
+      li.appendChild(a); li.appendChild(t); ul.appendChild(li);
+    });
+  }
+
+  function showMsg(id, text, ok) { var el = $(id); el.textContent = text; el.className = "msg " + (ok ? "ok" : "err"); }
+
+  fillSettings(); drawTargets(); drawPhrases(); drawHistory();
+  if (!cfg.topic) $("settings").classList.add("open");
+})();
+</script>
+</body>
+</html>
