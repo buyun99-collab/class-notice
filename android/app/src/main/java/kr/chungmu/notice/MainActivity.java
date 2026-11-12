@@ -27,6 +27,7 @@ public class MainActivity extends Activity {
     private TextView statusView, permView;
     private EditText serverIn, topicIn, roomIn, pinIn;
     private boolean uiReady = false;
+    private String lastSeenRoom = null;
 
     private final Runnable refresher = new Runnable() {
         @Override public void run() {
@@ -108,6 +109,9 @@ public class MainActivity extends Activity {
         sv.addView(col);
 
         label(col, "교실 공지 알림 설정", 26, true);
+        TextView devView = label(col, "이 칠판 번호: " + Prefs.devId(this)
+                + "   (관리자 페이지 ‘칠판 관리’에서 이 번호로 구분합니다)", 16, true);
+        devView.setTextColor(Color.rgb(46, 125, 50));
         statusView = label(col, "", 16, false);
         statusView.setTextColor(Color.rgb(21, 101, 192));
         permView = label(col, "", 15, false);
@@ -152,8 +156,8 @@ public class MainActivity extends Activity {
         String room = roomIn.getText().toString().trim();
         String server = serverIn.getText().toString().trim();
         String pin = pinIn.getText().toString().trim();
-        if (!topic.matches("[A-Za-z0-9_-]{8,64}")) {
-            Toast.makeText(this, "채널 이름은 영문, 숫자, -, _ 로 8자 이상이어야 합니다", Toast.LENGTH_LONG).show();
+        if (!topic.matches("[A-Za-z0-9_-]{8,56}")) {
+            Toast.makeText(this, "채널 이름은 영문, 숫자, -, _ 로 8~56자여야 합니다", Toast.LENGTH_LONG).show();
             return;
         }
         if (server.isEmpty()) server = Prefs.DEFAULT_SERVER;
@@ -202,6 +206,10 @@ public class MainActivity extends Activity {
     private void refresh() {
         if (!uiReady) return;
         statusView.setText("상태: " + Prefs.status(this));
+        // 관리자 페이지에서 반 이름을 원격으로 바꿨을 수 있으니, 입력 중이 아닐 때 화면에 반영
+        String room = Prefs.room(this);
+        if (lastSeenRoom != null && !room.equals(lastSeenRoom)) roomIn.setText(room);
+        lastSeenRoom = room;
         StringBuilder sb = new StringBuilder();
         sb.append(OverlayPopup.canShow(this) ? "✔ 다른 앱 위에 표시: 허용됨" : "✘ 다른 앱 위에 표시: 허용 필요 (①번 버튼)");
         if (Build.VERSION.SDK_INT >= 23) {

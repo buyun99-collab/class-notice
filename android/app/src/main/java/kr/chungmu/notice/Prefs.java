@@ -36,6 +36,22 @@ final class Prefs {
          .apply();
     }
 
+    /** 칠판마다 한 번 만들어지는 고유 번호 (예: K7Q2). 관리자 페이지에서 칠판을 구분할 때 씀 */
+    static synchronized String devId(Context c) {
+        String id = sp(c).getString("devId", "");
+        if (id.isEmpty()) {
+            String abc = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+            java.security.SecureRandom r = new java.security.SecureRandom();
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 4; i++) sb.append(abc.charAt(r.nextInt(abc.length())));
+            id = sb.toString();
+            sp(c).edit().putString("devId", id).apply();
+        }
+        return id;
+    }
+
+    static void setRoom(Context c, String room) { sp(c).edit().putString("room", room.trim()).apply(); }
+
     static void setLastId(Context c, String id) { sp(c).edit().putString("lastId", id).apply(); }
     static void setStatus(Context c, String s) { sp(c).edit().putString("status", s).apply(); }
 }

@@ -43,6 +43,12 @@
   .hist li:first-child { border-top:0; }
   .hist .t { color:var(--sub); white-space:nowrap; }
   .hint { font-size:13px; color:var(--sub); margin-top:6px; line-height:1.5; }
+  table.boards { width:100%; border-collapse:collapse; font-size:15px; margin-top:8px; }
+  table.boards th { text-align:left; color:var(--sub); font-weight:600; font-size:13px; padding:6px; border-bottom:1px solid var(--line); }
+  table.boards td { padding:8px 6px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  table.boards td.dev { font-family:ui-monospace, Menlo, Consolas, monospace; font-weight:700; }
+  table.boards .warn { color:var(--red); font-size:13px; }
+  table.boards button { border:1px solid var(--line); background:#fff; border-radius:8px; padding:6px 10px; font-size:13px; cursor:pointer; margin-right:4px; }
   #settings { display:none; }
   #settings.open { display:block; }
   .phr { display:flex; align-items:center; gap:2px; }
@@ -127,6 +133,28 @@
   </section>
 
   <section class="card">
+    <h2>칠판 관리</h2>
+    <div class="row">
+      <button class="ghost" id="loadBoards" style="flex:0; white-space:nowrap">칠판 목록 불러오기</button>
+      <button class="ghost" id="identifyAll" style="flex:0; white-space:nowrap">모든 칠판에 번호 띄우기</button>
+    </div>
+    <div class="msg" id="boardMsg"></div>
+    <div style="overflow-x:auto">
+      <table class="boards" id="boards"></table>
+    </div>
+    <details style="margin-top:14px">
+      <summary style="cursor:pointer; font-size:15px">새 학년도 반 이름 한꺼번에 바꾸기</summary>
+      <div class="hint">한 줄에 하나씩 ‘지금 반 이름 → 새 반 이름’으로 적습니다. 칠판마다 지금 반 이름을 보고 한 번만 바뀌므로, 1-3 → 2-3 과 2-3 → 3-3 을 함께 적어도 꼬이지 않습니다.</div>
+      <textarea id="renameMap" placeholder="1-1 → 2-1&#10;1-2 → 2-2&#10;2-1 → 3-1"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="ghost" id="fillMap" style="flex:0; white-space:nowrap">불러온 목록으로 채우기</button>
+        <button class="ghost" id="gradeUp" style="flex:0; white-space:nowrap">1, 2학년 반을 한 학년씩 올리기</button>
+        <button class="ghost danger" id="applyMap" style="flex:0; white-space:nowrap">한꺼번에 바꾸기</button>
+      </div>
+    </details>
+  </section>
+
+  <section class="card">
     <h2>최근 보낸 공지 (이 기기)</h2>
     <ul class="hist" id="hist"></ul>
   </section>
@@ -170,7 +198,7 @@
   };
   $("saveSettings").onclick = function () {
     var topic = $("topic").value.trim();
-    if (!/^[A-Za-z0-9_-]{8,64}$/.test(topic)) {
+    if (!/^[A-Za-z0-9_-]{8,56}$/.test(topic)) {
       showMsg("setMsg", "채널 이름은 영문, 숫자, -, _ 로 8자 이상이어야 합니다.", false); return;
     }
     var server = $("server").value.trim() || "https://ntfy.sh";
@@ -294,6 +322,125 @@
     publish({ title: "공지 닫기", message: "close", tags: ["cmd:close"] })
       .then(function () { showMsg("sendMsg", "모든 칠판의 공지를 닫았습니다.", true); })
       .catch(function (e) { showMsg("sendMsg", "보내지 못했습니다: " + e.message, false); });
+  };
+
+  // ---------- 칠판 관리 ----------
+  var boards = [];   // [{dev, room, at, overlay, model, ver}]
+
+  function command(cmd, arg, title) {
+    return publish({ title: title, message: JSON.stringify(arg || {}), tags: ["cmd:" + cmd] });
+  }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function fetchBoards() {
+    var url = cfg.server.replace(/\/+$/, "") + "/" + cfg.topic + "-status/json?poll=1&since=all";
+    return fetch(url).then(function (r) { return r.text(); }).then(function (text) {
+      var latest = {};
+      text.split("\n").forEach(function (line) {
+        if (!line.trim()) return;
+        try {
+          var ev = JSON.parse(line); if (ev.event !== "message") return;
+          var st = JSON.parse(ev.message); if (!st.dev) return;
+          st.at = ev.time * 1000;
+          if (!latest[st.dev] || latest[st.dev].at < st.at) latest[st.dev] = st;
+        } catch (e) {}
+      });
+      boards = Object.keys(latest).map(function (k) { return latest[k]; });
+      boards.sort(function (a, b) { return (a.room || "~").localeCompare(b.room || "~", "ko", { numeric: true }); });
+    });
+  }
+
+  function ago(t) {
+    var s = Math.round((Date.now() - t) / 1000);
+    if (s < 60) return "방금";
+    if (s < 3600) return Math.round(s / 60) + "분 전";
+    if (s < 86400) return Math.round(s / 3600) + "시간 전";
+    return Math.round(s / 86400) + "일 전";
+  }
+
+  function drawBoards() {
+    var tb = $("boards"); tb.innerHTML = "";
+    if (!boards.length) return;
+    var head = document.createElement("tr");
+    ["칠판 번호", "반 이름", "마지막 응답", "", ""].forEach(function (h) { var th = document.createElement("th"); th.textContent = h; head.appendChild(th); });
+    tb.appendChild(head);
+    boards.forEach(function (b) {
+      var tr = document.createElement("tr");
+      var td1 = document.createElement("td"); td1.className = "dev"; td1.textContent = b.dev;
+      var td2 = document.createElement("td"); td2.textContent = b.room || "(없음)";
+      var td3 = document.createElement("td"); td3.textContent = ago(b.at);
+      var td4 = document.createElement("td");
+      if (b.overlay === false) { td4.className = "warn"; td4.textContent = "팝업 권한 없음"; }
+      var td5 = document.createElement("td");
+      var b1 = document.createElement("button"); b1.textContent = "반 바꾸기";
+      b1.onclick = function () {
+        var nv = prompt("칠판 " + b.dev + "의 새 반 이름 (지금: " + (b.room || "없음") + ")", b.room || "");
+        if (nv === null || !nv.trim()) return;
+        command("setroom", { dev: b.dev, room: nv.trim() }, "반 이름 변경")
+          .then(function () { showMsg("boardMsg", b.dev + " 칠판을 ‘" + nv.trim() + "’(으)로 바꿨습니다. 잠시 후 목록을 다시 불러옵니다.", true); return sleep(3000); })
+          .then(loadBoards)
+          .catch(function (e) { showMsg("boardMsg", "보내지 못했습니다: " + e.message, false); });
+      };
+      var b2 = document.createElement("button"); b2.textContent = "어느 칠판?";
+      b2.title = "이 칠판 화면에 번호를 30초 동안 띄웁니다";
+      b2.onclick = function () {
+        command("identify", { dev: b.dev }, "칠판 확인")
+          .then(function () { showMsg("boardMsg", b.dev + " 칠판 화면에 번호를 띄웠습니다.", true); })
+          .catch(function (e) { showMsg("boardMsg", "보내지 못했습니다: " + e.message, false); });
+      };
+      td5.appendChild(b1); td5.appendChild(b2);
+      [td1, td2, td3, td4, td5].forEach(function (td) { tr.appendChild(td); });
+      tb.appendChild(tr);
+    });
+  }
+
+  function loadBoards() {
+    showMsg("boardMsg", "칠판들에 응답을 요청하는 중입니다... (약 5초)", true);
+    return command("ping", {}, "칠판 확인 요청")
+      .then(function () { return sleep(5000); })
+      .then(fetchBoards)
+      .then(function () {
+        drawBoards();
+        showMsg("boardMsg", boards.length ? "칠판 " + boards.length + "대를 찾았습니다. 마지막 응답이 ‘방금’이 아닌 칠판은 지금 꺼져 있거나 연결이 끊긴 것입니다." : "응답한 칠판이 없습니다. 칠판 앱의 채널 이름을 확인해 주세요.", boards.length > 0);
+      })
+      .catch(function (e) { showMsg("boardMsg", "불러오지 못했습니다: " + e.message, false); });
+  }
+  $("loadBoards").onclick = loadBoards;
+  $("identifyAll").onclick = function () {
+    command("identify", { dev: "all" }, "칠판 확인")
+      .then(function () { showMsg("boardMsg", "모든 칠판에 번호를 30초 동안 띄웠습니다.", true); })
+      .catch(function (e) { showMsg("boardMsg", "보내지 못했습니다: " + e.message, false); });
+  };
+
+  $("fillMap").onclick = function () {
+    if (!boards.length) { showMsg("boardMsg", "먼저 ‘칠판 목록 불러오기’를 눌러 주세요.", false); return; }
+    $("renameMap").value = boards.filter(function (b) { return b.room; })
+      .map(function (b) { return b.room + " → " + b.room; }).join("\n");
+  };
+  $("gradeUp").onclick = function () {
+    var lines = [];
+    for (var g = 2; g >= 1; g--) {
+      var n = Math.max(cfg.g[g - 1] || 0, cfg.g[g] || 0);
+      for (var c = 1; c <= n; c++) lines.push(g + "-" + c + " → " + (g + 1) + "-" + c);
+    }
+    $("renameMap").value = lines.join("\n");
+    showMsg("boardMsg", "1학년 반은 2학년으로, 2학년 반은 3학년으로 채웠습니다. 3학년 교실은 필요하면 직접 줄을 추가해 주세요.", true);
+  };
+  $("applyMap").onclick = function () {
+    var map = {}, count = 0, bad = [];
+    $("renameMap").value.split("\n").forEach(function (line) {
+      if (!line.trim()) return;
+      var p = line.split(/\s*(?:→|->|=>|>|=)\s*|\s+/).filter(Boolean);
+      if (p.length !== 2) { bad.push(line.trim()); return; }
+      if (p[0] !== p[1]) { map[p[0]] = p[1]; count++; }
+    });
+    if (bad.length) { showMsg("boardMsg", "이해하지 못한 줄이 있습니다: " + bad.join(", "), false); return; }
+    if (!count) { showMsg("boardMsg", "바꿀 내용이 없습니다.", false); return; }
+    if (!confirm(count + "개 반 이름을 한꺼번에 바꿉니다. 지금 켜져 있는 칠판에만 적용되니, 꺼진 칠판은 나중에 따로 바꿔야 합니다. 진행할까요?")) return;
+    command("rename", { map: map }, "반 이름 일괄 변경")
+      .then(function () { showMsg("boardMsg", "보냈습니다. 잠시 후 목록을 다시 불러옵니다.", true); return sleep(3000); })
+      .then(loadBoards)
+      .catch(function (e) { showMsg("boardMsg", "보내지 못했습니다: " + e.message, false); });
   };
 
   // ---------- 기록 ----------

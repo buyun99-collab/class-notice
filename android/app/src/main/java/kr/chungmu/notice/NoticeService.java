@@ -191,7 +191,12 @@ public class NoticeService extends Service {
         try {
             JSONObject o = new JSONObject(line);
             String ev = o.optString("event");
-            if ("keepalive".equals(ev) || "open".equals(ev)) {
+            if ("open".equals(ev)) {
+                status("연결됨");
+                report();   // 연결될 때마다 관리자 페이지에 내 번호와 반 이름을 알림
+                return;
+            }
+            if ("keepalive".equals(ev)) {
                 status("연결됨");
                 return;
             }
@@ -206,8 +211,8 @@ public class NoticeService extends Service {
             if (time > 0 && System.currentTimeMillis() / 1000 - time > MAX_AGE_SEC) return;
 
             final Notice n = Notice.parse(o);
-            if (n.close) {
-                main.post(OverlayPopup::dismiss);
+            if (n.cmd != null) {
+                handleCommand(n.cmd, o.optString("message", ""));
                 return;
             }
             if (!n.matches(Prefs.room(this))) return;
@@ -217,6 +222,109 @@ public class NoticeService extends Service {
         } catch (Exception ignored) {
             // 형식이 맞지 않는 줄은 무시
         }
+    }
+
+    // ---------------- 관리 명령 ----------------
+
+    private void handleCommand(String cmd, String message) {
+        String me = Prefs.devId(this);
+        JSONObject arg;
+        try { arg = new JSONObject(message); } catch (Exception e) { arg = new JSONObject(); }
+
+        switch (cmd) {
+            case "close":
+                main.post(OverlayPopup::dismiss);
+                break;
+
+            case "ping":
+                report();
+                break;
+
+            case "setroom": {
+                if (!me.equalsIgnoreCase(arg.optString("dev", ""))) return;
+                changeRoom(arg.optString("room", ""));
+                break;
+            }
+
+            case "rename": {
+                JSONObject map = arg.optJSONObject("map");
+                if (map == null) return;
+                String mine = Notice.norm(Prefs.room(this));
+                if (mine.isEmpty()) return;
+                java.util.Iterator<String> keys = map.keys();
+                while (keys.hasNext()) {
+                    String from = keys.next();
+                    if (Notice.norm(from).equals(mine)) {
+                        changeRoom(map.optString(from, ""));
+                        break;
+                    }
+                }
+                break;
+            }
+
+            case "identify": {
+                String dev = arg.optString("dev", "");
+                if (!dev.equalsIgnoreCase(me) && !dev.equalsIgnoreCase("all")) return;
+                final Notice n = Notice.info("칠판 번호  " + me,
+                        "반 이름: " + roomLabel(Prefs.room(this)), 30);
+                wakeScreen();
+                main.post(() -> OverlayPopup.show(getApplicationContext(), n));
+                break;
+            }
+        }
+    }
+
+    private static String roomLabel(String room) {
+        return room.isEmpty() ? "(정해지지 않음)" : room;
+    }
+
+    private void changeRoom(String newRoom) {
+        newRoom = newRoom.trim();
+        String old = Prefs.room(this);
+        if (newRoom.equals(old)) { report(); return; }
+        Prefs.setRoom(this, newRoom);
+        report();
+        final Notice n = Notice.info("반 이름이 바뀌었습니다",
+                roomLabel(old) + "  →  " + roomLabel(newRoom), 15);
+        main.post(() -> {
+            goForeground();   // 알림 표시줄의 반 이름도 갱신
+            OverlayPopup.show(getApplicationContext(), n);
+        });
+    }
+
+    /** 상태 채널(채널이름-status)에 내 번호, 반 이름 등을 보냄 */
+    private void report() {
+        final Context ctx = getApplicationContext();
+        new Thread(() -> {
+            HttpURLConnection c = null;
+            try {
+                JSONObject st = new JSONObject();
+                st.put("dev", Prefs.devId(ctx));
+                st.put("room", Prefs.room(ctx));
+                st.put("ver", "1.1");
+                st.put("overlay", OverlayPopup.canShow(ctx));
+                st.put("model", Build.MANUFACTURER + " " + Build.MODEL);
+
+                JSONObject body = new JSONObject();
+                body.put("topic", Prefs.topic(ctx) + "-status");
+                body.put("message", st.toString());
+                body.put("tags", new org.json.JSONArray().put("status"));
+
+                c = (HttpURLConnection) new URL(Prefs.server(ctx).replaceAll("/+$", "") + "/").openConnection();
+                c.setConnectTimeout(15000);
+                c.setReadTimeout(15000);
+                c.setDoOutput(true);
+                c.setRequestMethod("POST");
+                c.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+                byte[] bytes = body.toString().getBytes("UTF-8");
+                c.getOutputStream().write(bytes);
+                c.getOutputStream().close();
+                c.getResponseCode();
+            } catch (Exception ignored) {
+            } finally {
+                if (c != null) try { c.disconnect(); } catch (Exception ignored) {}
+            }
+        }, "status-report").start();
     }
 
     @SuppressWarnings("deprecation")

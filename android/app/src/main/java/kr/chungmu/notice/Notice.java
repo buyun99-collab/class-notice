@@ -20,6 +20,10 @@ import java.util.regex.Pattern;
  *              "sec:60"      표시 시간(초), 0이면 닫을 때까지
  *              "urgent"      긴급
  *              "cmd:close"   떠 있는 공지를 모두 닫기
+ *              "cmd:ping"    모든 칠판이 상태(번호, 반 이름)를 보고
+ *              "cmd:setroom" message = {"dev":"K7Q2","room":"2-3"}  한 대의 반 이름 바꾸기
+ *              "cmd:rename"  message = {"map":{"1-3":"2-3", ...}}  여러 대 한꺼번에 바꾸기
+ *              "cmd:identify" message = {"dev":"K7Q2"}  해당 칠판에 번호를 크게 띄우기
  */
 final class Notice {
     String title = "";
@@ -27,6 +31,8 @@ final class Notice {
     boolean urgent = false;
     int seconds = 60;
     boolean close = false;
+    /** 관리 명령 (close, ping, setroom, rename, identify). 일반 공지면 null */
+    String cmd = null;
     final List<String> targets = new ArrayList<>();
 
     private static final Pattern PREFIX = Pattern.compile("^\\s*\\[([^\\]]+)\\]\\s*");
@@ -49,8 +55,9 @@ final class Notice {
                     catch (NumberFormatException ignored) {}
                 } else if (lower.equals("urgent") || lower.equals("긴급")) {
                     n.urgent = true;
-                } else if (lower.equals("cmd:close")) {
-                    n.close = true;
+                } else if (lower.startsWith("cmd:")) {
+                    n.cmd = lower.substring(4).trim();
+                    n.close = n.cmd.equals("close");
                 }
             }
         }
@@ -81,7 +88,15 @@ final class Notice {
         }
     }
 
-    private static String norm(String s) {
+    static Notice info(String title, String body, int seconds) {
+        Notice n = new Notice();
+        n.title = title;
+        n.body = body;
+        n.seconds = seconds;
+        return n;
+    }
+
+    static String norm(String s) {
         return s.replaceAll("\\s+", "").replace("반", "").toLowerCase(Locale.ROOT);
     }
 
