@@ -80,6 +80,11 @@
     </div>
     <label>그 밖의 장소 (쉼표로 구분)</label>
     <input type="text" id="extra" placeholder="예: 교무실, 강당, 도서관">
+    <label>동영상 파일 올리기용 GitHub 토큰 (이 기기에만 저장)</label>
+    <input type="password" id="ghToken" placeholder="github_pat_로 시작하는 토큰" autocomplete="off">
+    <label>동영상을 올릴 저장소</label>
+    <input type="text" id="ghRepo" placeholder="buyun99-collab/class-notice" spellcheck="false">
+    <div class="hint">토큰이 있는 기기에서는 누구나 저장소에 파일을 올릴 수 있으니, 선생님 개인 기기에만 넣어 두세요.</div>
     <div class="row" style="margin-top:12px">
       <button class="ghost" id="saveSettings">저장</button>
     </div>
@@ -136,7 +141,19 @@
     <h2>동영상 띄우기 (위 ‘받는 곳’으로 보냄)</h2>
     <label for="videoUrl">유튜브 주소 또는 동영상 파일 주소</label>
     <input type="text" id="videoUrl" placeholder="예: https://youtu.be/xxxxxxxxxxx" autocomplete="off" spellcheck="false">
-    <div class="hint" id="videoHint">학교 동영상 파일은 유튜브에 ‘일부 공개’로 올린 뒤 그 주소를 넣으면 가장 잘 됩니다.</div>
+    <div class="hint" id="videoHint">유튜브 주소를 넣거나, 아래에서 컴퓨터의 동영상 파일을 올리세요.</div>
+    <div id="drop" style="margin-top:10px; border:2px dashed var(--line); border-radius:12px; padding:16px; text-align:center; cursor:pointer; color:var(--sub)">
+      📁 컴퓨터의 동영상 파일을 여기로 끌어다 놓거나 눌러서 고르세요 (mp4 권장, 95MB까지)
+      <input type="file" id="videoFile" accept="video/*" style="display:none">
+    </div>
+    <div id="fileInfo" class="hint"></div>
+    <div id="progWrap" style="display:none; margin-top:8px; background:#eef1f5; border-radius:8px; overflow:hidden; height:14px">
+      <div id="prog" style="height:100%; width:0; background:#6a1b9a; transition:width .2s"></div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="ghost" id="showLibrary" style="flex:0; white-space:nowrap">올린 동영상 보관함 (최근 5개)</button>
+    </div>
+    <ul class="hist" id="library" style="margin-top:6px"></ul>
     <label style="display:flex; align-items:center; gap:8px; color:var(--ink)">
       <input type="checkbox" id="videoAutoClose" checked> 영상이 끝나면 자동으로 닫기
     </label>
@@ -205,6 +222,8 @@
     $("topic").value = cfg.topic || "";
     $("g1").value = cfg.g[0]; $("g2").value = cfg.g[1]; $("g3").value = cfg.g[2];
     $("extra").value = cfg.extra || "";
+    $("ghToken").value = cfg.ghToken || "";
+    $("ghRepo").value = cfg.ghRepo || "buyun99-collab/class-notice";
   }
   $("toggleSettings").onclick = function () { $("settings").classList.toggle("open"); };
   $("genTopic").onclick = function () {
@@ -223,7 +242,9 @@
     cfg = {
       server: server.replace(/\/+$/, ""), topic: topic,
       g: [num($("g1").value), num($("g2").value), num($("g3").value)],
-      extra: $("extra").value.trim()
+      extra: $("extra").value.trim(),
+      ghToken: $("ghToken").value.trim(),
+      ghRepo: ($("ghRepo").value.trim() || "buyun99-collab/class-notice").replace(/^https?:\/\/github\.com\//, "").replace(/\/+$/, "")
     };
     store.set("cfg", cfg);
     selected = {}; drawTargets();
@@ -360,19 +381,22 @@
       : /^https?:\/\//.test(v) ? "동영상 파일 주소로 보냅니다. 칠판에서 열 수 있는 주소여야 합니다."
       : "주소 형식이 올바르지 않습니다.";
   };
+  function sendVideo(arg, label) {
+    var where = whereText();
+    arg.autoClose = $("videoAutoClose").checked;
+    return publish({ title: "동영상 재생", message: JSON.stringify(arg), tags: ["cmd:video"].concat(targetTags()) })
+      .then(function () {
+        showMsg("videoMsg", "재생 명령을 보냈습니다 → " + where, true);
+        history.unshift({ at: Date.now(), title: label, where: where, urgent: false });
+        history = history.slice(0, 20); store.set("history", history); drawHistory();
+      });
+  }
   $("playVideo").onclick = function () {
     var v = $("videoUrl").value.trim(), id = youtubeId(v);
     if (!id && !/^https?:\/\//.test(v)) { showMsg("videoMsg", "유튜브 주소나 동영상 파일 주소를 넣어 주세요.", false); return; }
     var where = whereText();
     if (!confirm("[" + where + "] 칠판에서 동영상을 소리와 함께 재생합니다. 보낼까요?")) return;
-    var arg = id ? { yt: id } : { src: v };
-    arg.autoClose = $("videoAutoClose").checked;
-    publish({ title: "동영상 재생", message: JSON.stringify(arg), tags: ["cmd:video"].concat(targetTags()) })
-      .then(function () {
-        showMsg("videoMsg", "재생 명령을 보냈습니다 → " + where, true);
-        history.unshift({ at: Date.now(), title: "▶ 동영상" + (id ? " (유튜브 " + id + ")" : ""), where: where, urgent: false });
-        history = history.slice(0, 20); store.set("history", history); drawHistory();
-      })
+    sendVideo(id ? { yt: id } : { src: v }, "▶ 동영상" + (id ? " (유튜브 " + id + ")" : ""))
       .catch(function (e) { showMsg("videoMsg", "보내지 못했습니다: " + e.message, false); });
   };
   $("stopVideo").onclick = function () {
@@ -380,6 +404,156 @@
     publish({ title: "동영상 끄기", message: "{}", tags: ["cmd:videostop"].concat(targetTags()) })
       .then(function () { showMsg("videoMsg", "동영상을 껐습니다 → " + where, true); })
       .catch(function (e) { showMsg("videoMsg", "보내지 못했습니다: " + e.message, false); });
+  };
+
+  // ---------- 동영상 파일 올리기 (GitHub 저장소의 videos 가지) ----------
+  var BRANCH = "videos", KEEP = 5, MAX_MB = 95;
+  var names = store.get("videoNames", {});   // 저장된 파일 이름 → 원래 파일 이름
+
+  function gh(method, path, body) {
+    if (!cfg.ghToken) return Promise.reject(new Error("먼저 ‘설정’에서 GitHub 토큰을 넣고 저장해 주세요."));
+    return fetch("https://api.github.com/repos/" + cfg.ghRepo + path, {
+      method: method,
+      headers: { Authorization: "Bearer " + cfg.ghToken, Accept: "application/vnd.github+json" },
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function (r) {
+      if (r.status === 404 && method === "GET") return null;
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) {
+          var why = r.status === 401 ? "토큰이 올바르지 않습니다" : r.status === 403 ? "토큰에 쓰기 권한이 없습니다" : (j.message || "");
+          throw new Error("GitHub 응답 " + r.status + " " + why);
+        }
+        return j;
+      });
+    });
+  }
+
+  function uploadBlob(b64, onProgress) {
+    return new Promise(function (resolve, reject) {
+      var x = new XMLHttpRequest();
+      x.open("POST", "https://api.github.com/repos/" + cfg.ghRepo + "/git/blobs");
+      x.setRequestHeader("Authorization", "Bearer " + cfg.ghToken);
+      x.setRequestHeader("Accept", "application/vnd.github+json");
+      x.upload.onprogress = function (e) { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+      x.onload = function () {
+        var j = {}; try { j = JSON.parse(x.responseText); } catch (e) {}
+        if (x.status >= 200 && x.status < 300 && j.sha) resolve(j.sha);
+        else reject(new Error("GitHub 응답 " + x.status + " " + (j.message || "")));
+      };
+      x.onerror = function () { reject(new Error("네트워크 오류로 올리지 못했습니다")); };
+      x.send(JSON.stringify({ content: b64, encoding: "base64" }));
+    });
+  }
+
+  function readBase64(file) {
+    return new Promise(function (resolve, reject) {
+      var fr = new FileReader();
+      fr.onload = function () { resolve(String(fr.result).split(",")[1]); };
+      fr.onerror = function () { reject(new Error("파일을 읽지 못했습니다")); };
+      fr.readAsDataURL(file);
+    });
+  }
+
+  function rawUrl(commitSha, path) {
+    return "https://raw.githubusercontent.com/" + cfg.ghRepo + "/" + commitSha + "/" + path;
+  }
+
+  // 지금 보관함(videos 가지)의 파일 목록 [{path, sha}] 과 커밋 sha
+  function readLibrary() {
+    return gh("GET", "/git/ref/heads/" + BRANCH).then(function (ref) {
+      if (!ref) return { commit: null, files: [] };
+      var commit = ref.object.sha;
+      return gh("GET", "/git/commits/" + commit).then(function (c) {
+        return gh("GET", "/git/trees/" + c.tree.sha);
+      }).then(function (t) {
+        var files = (t.tree || []).filter(function (e) { return e.type === "blob" && /^v-/.test(e.path); });
+        files.sort(function (a, b) { return a.path < b.path ? 1 : -1; });
+        return { commit: commit, files: files };
+      });
+    });
+  }
+
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+
+  function uploadVideo(file) {
+    var d = new Date();
+    var ext = (file.name.match(/\.([A-Za-z0-9]{2,4})$/) || [, "mp4"])[1].toLowerCase();
+    var path = "v-" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + "-" + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()) + "." + ext;
+    var lib, blobSha;
+    $("progWrap").style.display = "block"; $("prog").style.width = "0";
+    showMsg("videoMsg", "파일을 읽는 중입니다...", true);
+    return readLibrary().then(function (l) {
+      lib = l;
+      return readBase64(file);
+    }).then(function (b64) {
+      showMsg("videoMsg", "GitHub에 올리는 중입니다... (큰 파일은 몇 분 걸릴 수 있어요)", true);
+      return uploadBlob(b64, function (p) {
+        $("prog").style.width = Math.round(p * 100) + "%";
+        showMsg("videoMsg", "GitHub에 올리는 중입니다... " + Math.round(p * 100) + "%", true);
+      });
+    }).then(function (sha) {
+      blobSha = sha;
+      showMsg("videoMsg", "올린 파일을 정리하는 중입니다...", true);
+      var keep = lib.files.slice(0, KEEP - 1).map(function (e) { return { path: e.path, mode: "100644", type: "blob", sha: e.sha }; });
+      keep.unshift({ path: path, mode: "100644", type: "blob", sha: blobSha });
+      return gh("POST", "/git/trees", { tree: keep });
+    }).then(function (tree) {
+      // 이전 기록 없이 새로 만들어서, 오래된 동영상은 저장소에서 점차 지워지게 함
+      return gh("POST", "/git/commits", { message: "동영상 " + path, tree: tree.sha, parents: [] });
+    }).then(function (commit) {
+      var p = lib.commit
+        ? gh("PATCH", "/git/refs/heads/" + BRANCH, { sha: commit.sha, force: true })
+        : gh("POST", "/git/refs", { ref: "refs/heads/" + BRANCH, sha: commit.sha });
+      return p.then(function () {
+        names[path] = file.name; store.set("videoNames", names);
+        $("prog").style.width = "100%";
+        return rawUrl(commit.sha, path);
+      });
+    });
+  }
+
+  function handleFile(file) {
+    if (!file) return;
+    var mb = file.size / 1048576;
+    $("fileInfo").textContent = file.name + " (" + mb.toFixed(1) + "MB)";
+    if (mb > MAX_MB) { showMsg("videoMsg", MAX_MB + "MB가 넘는 파일은 올릴 수 없습니다. 해상도를 낮추거나 잘라서 용량을 줄여 주세요.", false); return; }
+    if (!/\.(mp4|m4v|webm)$/i.test(file.name)) {
+      if (!confirm("mp4나 webm 파일이 아니면 칠판에서 재생되지 않을 수 있습니다. 그래도 올릴까요?")) return;
+    }
+    var where = whereText();
+    if (!confirm("‘" + file.name + "’을(를) 올린 뒤 [" + where + "] 칠판에서 바로 재생합니다. 진행할까요?")) return;
+    uploadVideo(file).then(function (url) {
+      $("videoUrl").value = url; $("videoUrl").oninput();
+      return sendVideo({ src: url }, "▶ " + file.name);
+    }).catch(function (e) {
+      showMsg("videoMsg", "올리지 못했습니다: " + e.message, false);
+    }).then(function () { setTimeout(function () { $("progWrap").style.display = "none"; }, 1500); $("videoFile").value = ""; });
+  }
+
+  $("drop").onclick = function () { $("videoFile").click(); };
+  $("videoFile").onchange = function () { handleFile($("videoFile").files[0]); };
+  $("drop").ondragover = function (e) { e.preventDefault(); $("drop").style.borderColor = "#6a1b9a"; };
+  $("drop").ondragleave = function () { $("drop").style.borderColor = ""; };
+  $("drop").ondrop = function (e) { e.preventDefault(); $("drop").style.borderColor = ""; handleFile(e.dataTransfer.files[0]); };
+
+  $("showLibrary").onclick = function () {
+    var ul = $("library"); ul.innerHTML = '<li><span class="t">불러오는 중...</span></li>';
+    readLibrary().then(function (lib) {
+      ul.innerHTML = "";
+      if (!lib.files.length) { ul.innerHTML = '<li><span class="t">아직 올린 동영상이 없습니다.</span></li>'; return; }
+      lib.files.forEach(function (f) {
+        var li = document.createElement("li");
+        var a = document.createElement("span"); a.textContent = names[f.path] || f.path;
+        var b = document.createElement("button"); b.className = "ghost"; b.style.padding = "4px 10px"; b.textContent = "▶ 재생";
+        b.onclick = function () {
+          var where = whereText();
+          if (!confirm("[" + where + "] 칠판에서 ‘" + (names[f.path] || f.path) + "’을(를) 재생합니다. 보낼까요?")) return;
+          sendVideo({ src: rawUrl(lib.commit, f.path) }, "▶ " + (names[f.path] || f.path))
+            .catch(function (e) { showMsg("videoMsg", "보내지 못했습니다: " + e.message, false); });
+        };
+        li.appendChild(a); li.appendChild(b); ul.appendChild(li);
+      });
+    }).catch(function (e) { ul.innerHTML = ""; showMsg("videoMsg", "보관함을 불러오지 못했습니다: " + e.message, false); });
   };
 
   // ---------- 칠판 관리 ----------
