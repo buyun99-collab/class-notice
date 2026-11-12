@@ -101,6 +101,15 @@
   <section class="card">
     <h2>공지 내용</h2>
     <div class="chips" id="phrases"></div>
+    <div class="row" style="margin-top:8px">
+      <button class="ghost" id="openQuotes" style="flex:0; white-space:nowrap">💡 좋은 글귀 고르기 (102개)</button>
+      <button class="ghost" id="randomQuote" style="flex:0; white-space:nowrap">🎲 아무거나 하나</button>
+    </div>
+    <div id="quotePanel" style="display:none; margin-top:10px; border:1px solid var(--line); border-radius:12px; padding:12px">
+      <div class="chips" id="quoteCats"></div>
+      <input type="text" id="quoteSearch" placeholder="글귀 검색 (예: 시험, 친구, 공자)" style="margin-top:8px">
+      <ul class="hist" id="quoteList" style="max-height:320px; overflow-y:auto; margin-top:6px"></ul>
+    </div>
     <label for="title">제목</label>
     <input type="text" id="title" placeholder="예: 전교생 강당 집합" maxlength="60">
     <label for="body">내용</label>
@@ -143,7 +152,7 @@
     <input type="text" id="videoUrl" placeholder="예: https://youtu.be/xxxxxxxxxxx" autocomplete="off" spellcheck="false">
     <div class="hint" id="videoHint">유튜브 주소를 넣거나, 아래에서 컴퓨터의 동영상 파일을 올리세요.</div>
     <div id="drop" style="margin-top:10px; border:2px dashed var(--line); border-radius:12px; padding:16px; text-align:center; cursor:pointer; color:var(--sub)">
-      📁 컴퓨터의 동영상 파일을 여기로 끌어다 놓거나 눌러서 고르세요 (mp4 권장, 95MB까지)
+      📁 컴퓨터의 동영상 파일을 여기로 끌어다 놓거나 눌러서 고르세요 (mp4 권장, 500MB까지)
       <input type="file" id="videoFile" accept="video/*" style="display:none">
     </div>
     <div id="fileInfo" class="hint"></div>
@@ -312,6 +321,46 @@
     phrases = phrases.slice(0, 12); store.set("phrases", phrases); drawPhrases();
   };
 
+  // ---------- 좋은 글귀 ----------
+  var QUOTES = [["노력", "천 리 길도 한 걸음부터.", "속담"], ["노력", "티끌 모아 태산.", "속담"], ["노력", "낙숫물이 댓돌을 뚫는다.", "속담"], ["노력", "우물을 파도 한 우물을 파라.", "속담"], ["노력", "구슬이 서 말이라도 꿰어야 보배다.", "속담"], ["노력", "시작이 반이다.", "속담"], ["노력", "천재는 1퍼센트의 영감과 99퍼센트의 노력으로 이루어진다.", "토머스 에디슨"], ["노력", "우공이산(愚公移山): 우직하게 한 가지 일을 꾸준히 하면 산도 옮길 수 있다.", "사자성어"], ["노력", "마부작침(磨斧作針): 도끼를 갈아 바늘을 만든다. 꾸준히 하면 어떤 일도 이룰 수 있다.", "사자성어"], ["노력", "수적천석(水滴穿石): 작은 물방울도 계속 떨어지면 돌을 뚫는다.", "사자성어"], ["노력", "자강불식(自強不息): 스스로 힘쓰며 쉬지 않는다.", "사자성어"], ["노력", "초지일관(初志一貫): 처음 세운 뜻을 끝까지 밀고 나간다.", "사자성어"], ["노력", "오늘 흘린 땀은 내일의 나를 배신하지 않는다.", ""], ["노력", "작은 습관 하나가 1년 뒤의 나를 바꾼다.", ""], ["노력", "남과 비교하지 말고 어제의 나와 비교하자.", ""], ["노력", "잘하는 사람이 꾸준한 사람을 이기기는 어렵다.", ""], ["노력", "하루 10분이라도 매일 하는 것이 가장 큰 힘이다.", ""], ["꿈과 도전", "늘 갈망하고, 우직하게 나아가라.", "스티브 잡스"], ["꿈과 도전", "상상력은 지식보다 중요하다.", "알베르트 아인슈타인"], ["꿈과 도전", "날 수 없으면 뛰고, 뛸 수 없으면 걷고, 걸을 수 없으면 기어라. 무엇을 하든 앞으로 나아가라.", "마틴 루서 킹 주니어"], ["꿈과 도전", "신에게는 아직 열두 척의 배가 있습니다.", "이순신"], ["꿈과 도전", "오직 한없이 가지고 싶은 것은 높은 문화의 힘이다.", "김구, 『백범일지』"], ["꿈과 도전", "대기만성(大器晩成): 큰 그릇은 늦게 이루어진다. 조금 늦어도 괜찮다.", "사자성어"], ["꿈과 도전", "일취월장(日就月將): 날마다 달마다 자라고 나아간다.", "사자성어"], ["꿈과 도전", "청출어람(靑出於藍): 푸른색은 쪽에서 나왔지만 쪽보다 더 푸르다.", "순자"], ["꿈과 도전", "꿈은 크게, 시작은 작게, 행동은 지금 바로.", ""], ["꿈과 도전", "해 보지 않으면 내가 무엇을 잘하는지 영영 알 수 없다.", ""], ["꿈과 도전", "두려움은 도전하는 사람에게만 찾아오는 손님이다.", ""], ["꿈과 도전", "정답이 하나인 시험은 있어도, 정답이 하나인 인생은 없다.", ""], ["꿈과 도전", "내가 가는 길이 처음이라면, 그 길을 처음 만드는 사람은 바로 나다.", ""], ["꿈과 도전", "오늘의 작은 용기가 내일의 큰 기회가 된다.", ""], ["꿈과 도전", "목표를 적는 순간, 꿈은 계획이 된다.", ""], ["공부", "배우고 때때로 익히면 또한 기쁘지 아니한가.", "공자, 『논어』"], ["공부", "아는 것을 안다 하고, 모르는 것을 모른다 하는 것, 이것이 아는 것이다.", "공자, 『논어』"], ["공부", "아는 사람은 좋아하는 사람만 못하고, 좋아하는 사람은 즐기는 사람만 못하다.", "공자, 『논어』"], ["공부", "세 사람이 길을 가면 그중에 반드시 나의 스승이 있다.", "공자, 『논어』"], ["공부", "하루라도 책을 읽지 않으면 입 안에 가시가 돋는다.", "안중근"], ["공부", "교육은 세상을 바꿀 수 있는 가장 강력한 무기다.", "넬슨 만델라"], ["공부", "내가 더 멀리 보았다면, 그것은 거인들의 어깨 위에 서 있었기 때문이다.", "아이작 뉴턴"], ["공부", "나는 특별한 재능이 없다. 다만 호기심이 아주 많을 뿐이다.", "알베르트 아인슈타인"], ["공부", "교육의 뿌리는 쓰지만 그 열매는 달다.", "아리스토텔레스"], ["공부", "온고지신(溫故知新): 옛것을 익혀 새것을 안다. 복습이 실력이다.", "사자성어"], ["공부", "형설지공(螢雪之功): 반딧불과 눈빛으로 공부해 이룬 보람.", "사자성어"], ["공부", "절차탁마(切磋琢磨): 자르고 갈고 쪼고 다듬듯 배움을 닦는다.", "사자성어"], ["공부", "학문은 물을 거슬러 배를 젓는 것과 같아서, 나아가지 않으면 물러난다.", "옛말"], ["공부", "모르는 것을 묻는 것은 한순간의 부끄러움, 묻지 않는 것은 평생의 부끄러움이다.", "옛말"], ["공부", "질문은 부끄러운 것이 아니라 똑똑해지는 가장 빠른 길이다.", ""], ["공부", "틀린 문제는 내가 아직 배울 것이 남았다는 반가운 신호다.", ""], ["공부", "공부는 머리로 하는 것이 아니라 엉덩이로 한다.", ""], ["공부", "이해하지 못한 채 넘어간 한 줄이 다음 단원의 벽이 된다.", ""], ["공부", "오늘 배운 것을 친구에게 설명할 수 있다면, 그것은 진짜 내 것이다.", ""], ["실패와 회복", "실패는 성공의 어머니.", "속담"], ["실패와 회복", "쥐구멍에도 볕 들 날 있다.", "속담"], ["실패와 회복", "나는 실패하고 또 실패했다. 그것이 내가 성공한 이유다.", "마이클 조던"], ["실패와 회복", "삶에서 두려워할 것은 아무것도 없다. 이해해야 할 것만 있을 뿐이다.", "마리 퀴리"], ["실패와 회복", "칠전팔기(七顚八起): 일곱 번 넘어져도 여덟 번 일어난다.", "사자성어"], ["실패와 회복", "고진감래(苦盡甘來): 쓴 것이 다하면 단 것이 온다.", "사자성어"], ["실패와 회복", "백절불굴(百折不屈): 백 번 꺾여도 굽히지 않는다.", "사자성어"], ["실패와 회복", "와신상담(臥薪嘗膽): 어려움을 참고 견디며 다시 일어설 날을 준비한다.", "사자성어"], ["실패와 회복", "넘어진 자리에서 배운 것이 가장 오래 남는다.", ""], ["실패와 회복", "오늘 안 됐다고 영원히 안 되는 것은 아니다.", ""], ["실패와 회복", "실수는 내가 무언가를 시도했다는 증거다.", ""], ["실패와 회복", "천천히 가도 괜찮다. 멈추지만 않으면 된다.", ""], ["실패와 회복", "비 온 뒤에 땅이 굳는다. 힘든 시간은 나를 단단하게 만든다.", "속담을 풀어 씀"], ["시간", "오늘 할 일을 내일로 미루지 말자.", "격언"], ["시간", "유비무환(有備無患): 미리 준비하면 걱정할 것이 없다.", "사자성어"], ["시간", "돌다리도 두들겨 보고 건너라.", "속담"], ["시간", "세 살 버릇 여든까지 간다. 좋은 습관은 지금 만들자.", "속담"], ["시간", "지금 이 순간이 다시 오지 않는 나의 고등학교 시절이다.", ""], ["시간", "10분 일찍 시작하면 하루가 10분 더 여유롭다.", ""], ["시간", "미루는 습관은 내일의 나에게 짐을 떠넘기는 것이다.", ""], ["시간", "쉬는 것도 실력이다. 잘 쉬어야 오래 달린다.", ""], ["시간", "스마트폰을 내려놓는 1시간이 나를 위한 가장 큰 선물이다.", ""], ["마음", "너 자신을 알라.", "델포이 신전의 격언"], ["마음", "호랑이에게 물려 가도 정신만 차리면 산다.", "속담"], ["마음", "하늘은 스스로 돕는 자를 돕는다.", "격언"], ["마음", "낙망은 청년의 죽음이요, 청년이 죽으면 민족이 죽는다.", "안창호"], ["마음", "불광불급(不狂不及): 미치지 않으면 이르지 못한다.", "사자성어"], ["마음", "지성감천(至誠感天): 정성이 지극하면 하늘도 감동한다.", "사자성어"], ["마음", "나는 생각보다 강하고, 생각보다 많은 것을 해낼 수 있다.", ""], ["마음", "남의 속도가 아니라 나의 속도로 가자.", ""], ["마음", "잘하고 있다. 지금처럼만 하면 된다.", ""], ["마음", "나를 가장 많이 응원해 줄 사람은 바로 나 자신이다.", ""], ["마음", "완벽하지 않아도 괜찮다. 어제보다 조금 나아지면 충분하다.", ""], ["마음", "감사하는 마음은 하루를 바꾸고, 하루가 모여 인생을 바꾼다.", ""], ["관계", "가는 말이 고와야 오는 말이 곱다.", "속담"], ["관계", "백지장도 맞들면 낫다.", "속담"], ["관계", "역지사지(易地思之): 처지를 바꾸어 생각해 본다.", "사자성어"], ["관계", "십시일반(十匙一飯): 열 사람이 한 숟가락씩 모으면 한 사람의 밥이 된다.", "사자성어"], ["관계", "친구의 좋은 점을 먼저 찾는 사람이 좋은 친구를 얻는다.", ""], ["관계", "말 한마디의 친절이 누군가의 하루를 살린다.", ""], ["관계", "혼자 가면 빨리 가고, 함께 가면 멀리 간다.", "격언"], ["관계", "고맙다, 미안하다, 괜찮다. 이 세 마디가 교실을 따뜻하게 만든다.", ""], ["관계", "다름을 인정하는 것에서 존중이 시작된다.", ""], ["시험 응원", "준비한 만큼 보여 주면 된다. 너는 충분히 준비했다.", ""], ["시험 응원", "긴장되는 것은 그만큼 열심히 했다는 뜻이다.", ""], ["시험 응원", "시험은 나를 평가하는 것이 아니라 내가 얼마나 자랐는지 확인하는 시간이다.", ""], ["시험 응원", "모르는 문제에 오래 머물지 말고, 아는 문제부터 차근차근.", ""], ["시험 응원", "마지막 1분까지 포기하지 않는 사람이 결과를 바꾼다.", ""], ["시험 응원", "점수는 결과의 일부일 뿐, 노력한 시간은 고스란히 너의 것이다.", ""], ["시험 응원", "깊게 숨 한 번 쉬고, 첫 문제부터 천천히. 할 수 있다!", ""], ["시험 응원", "오늘의 시험이 끝나면 내일의 나는 한 뼘 더 자라 있을 것이다.", ""]];
+  var quoteCat = "전체";
+  function useQuote(q) {
+    $("title").value = "오늘의 한마디";
+    $("body").value = q[1] + (q[2] ? "\n\n― " + q[2] : "");
+    $("title").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  function drawQuotes() {
+    var cats = ["전체"]; QUOTES.forEach(function (q) { if (cats.indexOf(q[0]) < 0) cats.push(q[0]); });
+    var cbox = $("quoteCats"); cbox.innerHTML = "";
+    cats.forEach(function (c) {
+      var el = document.createElement("span"); el.className = "chip" + (c === quoteCat ? " on" : ""); el.textContent = c;
+      el.onclick = function () { quoteCat = c; drawQuotes(); };
+      cbox.appendChild(el);
+    });
+    var term = $("quoteSearch").value.trim();
+    var ul = $("quoteList"); ul.innerHTML = "";
+    QUOTES.filter(function (q) {
+      return (quoteCat === "전체" || q[0] === quoteCat) && (!term || (q[1] + q[2] + q[0]).indexOf(term) >= 0);
+    }).forEach(function (q) {
+      var li = document.createElement("li"); li.style.cursor = "pointer";
+      var a = document.createElement("span"); a.textContent = q[1];
+      var t = document.createElement("span"); t.className = "t"; t.textContent = q[2];
+      li.appendChild(a); li.appendChild(t);
+      li.onclick = function () { useQuote(q); };
+      ul.appendChild(li);
+    });
+    if (!ul.children.length) ul.innerHTML = '<li><span class="t">찾는 글귀가 없습니다.</span></li>';
+  }
+  $("openQuotes").onclick = function () {
+    var p = $("quotePanel"); var open = p.style.display === "none";
+    p.style.display = open ? "block" : "none"; if (open) drawQuotes();
+  };
+  $("quoteSearch").oninput = drawQuotes;
+  $("randomQuote").onclick = function () {
+    var pool = QUOTES.filter(function (q) { return quoteCat === "전체" || q[0] === quoteCat; });
+    useQuote(pool[Math.floor(Math.random() * pool.length)]);
+  };
+
   // ---------- 종류 ----------
   Array.prototype.forEach.call($("levelSeg").querySelectorAll("button"), function (btn) {
     btn.onclick = function () {
@@ -407,7 +456,7 @@
   };
 
   // ---------- 동영상 파일 올리기 (GitHub 저장소의 videos 가지) ----------
-  var BRANCH = "videos", KEEP = 5, MAX_MB = 95;
+  var BRANCH = "videos", KEEP = 5, MAX_MB = 500, CHUNK = 80 * 1048576, LIB_MAX = 1500 * 1048576;
   var names = store.get("videoNames", {});   // 저장된 파일 이름 → 원래 파일 이름
 
   function gh(method, path, body) {
@@ -458,56 +507,92 @@
     return "https://raw.githubusercontent.com/" + cfg.ghRepo + "/" + commitSha + "/" + path;
   }
 
-  // 지금 보관함(videos 가지)의 파일 목록 [{path, sha}] 과 커밋 sha
+  // 보관함(videos 가지)을 동영상 단위로 읽기: [{base, size, files:[{path, sha, size}]}]
+  // 큰 동영상은 v-날짜.mp4.part01, .part02 ... 처럼 조각으로 저장됨
   function readLibrary() {
     return gh("GET", "/git/ref/heads/" + BRANCH).then(function (ref) {
-      if (!ref) return { commit: null, files: [] };
+      if (!ref) return { commit: null, videos: [] };
       var commit = ref.object.sha;
       return gh("GET", "/git/commits/" + commit).then(function (c) {
         return gh("GET", "/git/trees/" + c.tree.sha);
       }).then(function (t) {
-        var files = (t.tree || []).filter(function (e) { return e.type === "blob" && /^v-/.test(e.path); });
-        files.sort(function (a, b) { return a.path < b.path ? 1 : -1; });
-        return { commit: commit, files: files };
+        var groups = {};
+        (t.tree || []).forEach(function (e) {
+          if (e.type !== "blob" || !/^v-/.test(e.path)) return;
+          var base = e.path.replace(/\.part\d+$/, "");
+          (groups[base] = groups[base] || { base: base, size: 0, files: [] }).files.push(e);
+          groups[base].size += e.size || 0;
+        });
+        var videos = Object.keys(groups).map(function (k) {
+          groups[k].files.sort(function (a, b) { return a.path < b.path ? -1 : 1; });
+          return groups[k];
+        });
+        videos.sort(function (a, b) { return a.base < b.base ? 1 : -1; });
+        return { commit: commit, videos: videos };
       });
     });
   }
 
   function pad(n) { return (n < 10 ? "0" : "") + n; }
 
+  // 재생 명령에 넣을 내용 만들기
+  function videoArg(commit, v) {
+    if (v.files.length === 1 && v.files[0].path === v.base) return { src: rawUrl(commit, v.base) };
+    return {
+      parts: v.files.map(function (f) { return rawUrl(commit, f.path); }),
+      key: v.base, size: v.size
+    };
+  }
+
   function uploadVideo(file) {
     var d = new Date();
     var ext = (file.name.match(/\.([A-Za-z0-9]{2,4})$/) || [, "mp4"])[1].toLowerCase();
-    var path = "v-" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + "-" + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()) + "." + ext;
-    var lib, blobSha;
+    var base = "v-" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + "-" + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()) + "." + ext;
+    var count = Math.max(1, Math.ceil(file.size / CHUNK));
+    var lib, entries = [];
     $("progWrap").style.display = "block"; $("prog").style.width = "0";
-    showMsg("videoMsg", "파일을 읽는 중입니다...", true);
+    showMsg("videoMsg", "준비하는 중입니다...", true);
+
+    function sendChunk(i) {
+      if (i >= count) return Promise.resolve();
+      var start = i * CHUNK, end = Math.min(file.size, start + CHUNK);
+      var path = count === 1 ? base : base + ".part" + pad(i + 1);
+      return readBase64(file.slice(start, end)).then(function (b64) {
+        return uploadBlob(b64, function (p) {
+          var pct = Math.round(((start + (end - start) * p) / file.size) * 100);
+          $("prog").style.width = pct + "%";
+          showMsg("videoMsg", "GitHub에 올리는 중입니다... " + pct + "%" + (count > 1 ? "  (조각 " + (i + 1) + "/" + count + ")" : ""), true);
+        });
+      }).then(function (sha) {
+        entries.push({ path: path, mode: "100644", type: "blob", sha: sha, size: end - start });
+        return sendChunk(i + 1);
+      });
+    }
+
     return readLibrary().then(function (l) {
       lib = l;
-      return readBase64(file);
-    }).then(function (b64) {
-      showMsg("videoMsg", "GitHub에 올리는 중입니다... (큰 파일은 몇 분 걸릴 수 있어요)", true);
-      return uploadBlob(b64, function (p) {
-        $("prog").style.width = Math.round(p * 100) + "%";
-        showMsg("videoMsg", "GitHub에 올리는 중입니다... " + Math.round(p * 100) + "%", true);
-      });
-    }).then(function (sha) {
-      blobSha = sha;
+      return sendChunk(0);
+    }).then(function () {
       showMsg("videoMsg", "올린 파일을 정리하는 중입니다...", true);
-      var keep = lib.files.slice(0, KEEP - 1).map(function (e) { return { path: e.path, mode: "100644", type: "blob", sha: e.sha }; });
-      keep.unshift({ path: path, mode: "100644", type: "blob", sha: blobSha });
-      return gh("POST", "/git/trees", { tree: keep });
+      // 최근 것부터 남기되, 개수와 전체 용량을 넘지 않게
+      var total = file.size, keepCount = 1, tree = entries.map(function (e) { return { path: e.path, mode: e.mode, type: e.type, sha: e.sha }; });
+      lib.videos.forEach(function (v) {
+        if (keepCount >= KEEP || total + v.size > LIB_MAX) return;
+        keepCount++; total += v.size;
+        v.files.forEach(function (f) { tree.push({ path: f.path, mode: "100644", type: "blob", sha: f.sha }); });
+      });
+      return gh("POST", "/git/trees", { tree: tree });
     }).then(function (tree) {
       // 이전 기록 없이 새로 만들어서, 오래된 동영상은 저장소에서 점차 지워지게 함
-      return gh("POST", "/git/commits", { message: "동영상 " + path, tree: tree.sha, parents: [] });
+      return gh("POST", "/git/commits", { message: "동영상 " + base, tree: tree.sha, parents: [] });
     }).then(function (commit) {
       var p = lib.commit
         ? gh("PATCH", "/git/refs/heads/" + BRANCH, { sha: commit.sha, force: true })
         : gh("POST", "/git/refs", { ref: "refs/heads/" + BRANCH, sha: commit.sha });
       return p.then(function () {
-        names[path] = file.name; store.set("videoNames", names);
+        names[base] = file.name; store.set("videoNames", names);
         $("prog").style.width = "100%";
-        return rawUrl(commit.sha, path);
+        return videoArg(commit.sha, { base: base, size: file.size, files: entries });
       });
     });
   }
@@ -521,10 +606,11 @@
       if (!confirm("mp4나 webm 파일이 아니면 칠판에서 재생되지 않을 수 있습니다. 그래도 올릴까요?")) return;
     }
     var where = whereText();
-    if (!confirm("‘" + file.name + "’을(를) 올린 뒤 [" + where + "] 칠판에서 바로 재생합니다. 진행할까요?")) return;
-    uploadVideo(file).then(function (url) {
-      $("videoUrl").value = url; $("videoUrl").oninput();
-      return sendVideo({ src: url }, "▶ " + file.name);
+    var note = file.size > CHUNK ? "\n\n큰 파일이라 칠판마다 먼저 내려받은 뒤 재생합니다. 재생까지 1~3분쯤 걸릴 수 있어요." : "";
+    if (!confirm("‘" + file.name + "’을(를) 올린 뒤 [" + where + "] 칠판에서 바로 재생합니다. 진행할까요?" + note)) return;
+    uploadVideo(file).then(function (arg) {
+      if (arg.src) { $("videoUrl").value = arg.src; $("videoUrl").oninput(); }
+      return sendVideo(arg, "▶ " + file.name);
     }).catch(function (e) {
       showMsg("videoMsg", "올리지 못했습니다: " + e.message, false);
     }).then(function () { setTimeout(function () { $("progWrap").style.display = "none"; }, 1500); $("videoFile").value = ""; });
@@ -540,15 +626,16 @@
     var ul = $("library"); ul.innerHTML = '<li><span class="t">불러오는 중...</span></li>';
     readLibrary().then(function (lib) {
       ul.innerHTML = "";
-      if (!lib.files.length) { ul.innerHTML = '<li><span class="t">아직 올린 동영상이 없습니다.</span></li>'; return; }
-      lib.files.forEach(function (f) {
+      if (!lib.videos.length) { ul.innerHTML = '<li><span class="t">아직 올린 동영상이 없습니다.</span></li>'; return; }
+      lib.videos.forEach(function (v) {
         var li = document.createElement("li");
-        var a = document.createElement("span"); a.textContent = names[f.path] || f.path;
+        var label = names[v.base] || v.base;
+        var a = document.createElement("span"); a.textContent = label + "  (" + (v.size / 1048576).toFixed(0) + "MB)";
         var b = document.createElement("button"); b.className = "ghost"; b.style.padding = "4px 10px"; b.textContent = "▶ 재생";
         b.onclick = function () {
           var where = whereText();
-          if (!confirm("[" + where + "] 칠판에서 ‘" + (names[f.path] || f.path) + "’을(를) 재생합니다. 보낼까요?")) return;
-          sendVideo({ src: rawUrl(lib.commit, f.path) }, "▶ " + (names[f.path] || f.path))
+          if (!confirm("[" + where + "] 칠판에서 ‘" + label + "’을(를) 재생합니다. 보낼까요?")) return;
+          sendVideo(videoArg(lib.commit, v), "▶ " + label)
             .catch(function (e) { showMsg("videoMsg", "보내지 못했습니다: " + e.message, false); });
         };
         li.appendChild(a); li.appendChild(b); ul.appendChild(li);

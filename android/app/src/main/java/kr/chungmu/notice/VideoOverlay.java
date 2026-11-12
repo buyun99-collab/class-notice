@@ -148,6 +148,7 @@ final class VideoOverlay {
     }
 
     static void stop() {
+        PartsPlayer.stopOnly();
         if (web != null) {
             try {
                 web.loadUrl("about:blank");

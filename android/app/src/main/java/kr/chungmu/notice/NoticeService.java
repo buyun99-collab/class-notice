@@ -239,6 +239,15 @@ public class NoticeService extends Service {
 
             case "video": {
                 if (!n.matches(Prefs.room(this))) return;
+                final org.json.JSONArray parts = arg.optJSONArray("parts");
+                if (parts != null && parts.length() > 0) {
+                    final String key = arg.optString("key", "video");
+                    final long size = arg.optLong("size", 0);
+                    final boolean ac = arg.optBoolean("autoClose", true);
+                    wakeScreen(this, "동영상");
+                    main.post(() -> PartsPlayer.play(getApplicationContext(), parts, key, size, ac));
+                    break;
+                }
                 final String yt = VideoOverlay.youtubeId(arg.optString("yt", ""));
                 final String src = arg.optString("src", "").trim();
                 if (yt.isEmpty() && src.isEmpty()) return;
@@ -318,7 +327,7 @@ public class NoticeService extends Service {
                 JSONObject st = new JSONObject();
                 st.put("dev", Prefs.devId(ctx));
                 st.put("room", Prefs.room(ctx));
-                st.put("ver", "1.3");
+                st.put("ver", "1.4");
                 st.put("overlay", OverlayPopup.canShow(ctx));
                 st.put("model", Build.MANUFACTURER + " " + Build.MODEL);
 
