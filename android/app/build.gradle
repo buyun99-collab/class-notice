@@ -10,13 +10,27 @@ android {
         applicationId 'kr.chungmu.notice'
         minSdk 21
         targetSdk 34
-        versionCode 6
-        versionName '1.5'
+        versionCode 7
+        versionName '1.6'
+    }
+
+    // 서명 열쇠를 고정해야 새 버전을 기존 앱 위에 덮어 설치할 수 있음
+    signingConfigs {
+        fixed {
+            storeFile file('../keystore/class-notice.jks')
+            storePassword 'classnotice'
+            keyAlias 'classnotice'
+            keyPassword 'classnotice'
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig signingConfigs.fixed
+        }
         release {
             minifyEnabled false
+            signingConfig signingConfigs.fixed
         }
     }
 

@@ -775,12 +775,13 @@
     var tb = $("boards"); tb.innerHTML = "";
     if (!boards.length) return;
     var head = document.createElement("tr");
-    ["칠판 번호", "반 이름", "마지막 응답", "", ""].forEach(function (h) { var th = document.createElement("th"); th.textContent = h; head.appendChild(th); });
+    ["칠판 번호", "반 이름", "앱 버전", "마지막 응답", "", ""].forEach(function (h) { var th = document.createElement("th"); th.textContent = h; head.appendChild(th); });
     tb.appendChild(head);
     boards.forEach(function (b) {
       var tr = document.createElement("tr");
       var td1 = document.createElement("td"); td1.className = "dev"; td1.textContent = b.dev;
       var td2 = document.createElement("td"); td2.textContent = b.room || "(없음)";
+      var tdv = document.createElement("td"); tdv.textContent = b.ver || "";
       var td3 = document.createElement("td"); td3.textContent = ago(b.at);
       var td4 = document.createElement("td");
       if (b.overlay === false) { td4.className = "warn"; td4.textContent = "팝업 권한 없음"; }
@@ -802,7 +803,7 @@
           .catch(function (e) { showMsg("boardMsg", "보내지 못했습니다: " + e.message, false); });
       };
       td5.appendChild(b1); td5.appendChild(b2);
-      [td1, td2, td3, td4, td5].forEach(function (td) { tr.appendChild(td); });
+      [td1, td2, tdv, td3, td4, td5].forEach(function (td) { tr.appendChild(td); });
       tb.appendChild(tr);
     });
   }

@@ -109,7 +109,9 @@ public class MainActivity extends Activity {
         sv.addView(col);
 
         label(col, "교실 공지 알림 설정", 26, true);
-        TextView devView = label(col, "이 칠판 번호: " + Prefs.devId(this)
+        String ver = "";
+        try { ver = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception ignored) {}
+        TextView devView = label(col, "이 칠판 번호: " + Prefs.devId(this) + "   앱 버전: " + ver
                 + "   (관리자 페이지 ‘칠판 관리’에서 이 번호로 구분합니다)", 16, true);
         devView.setTextColor(Color.rgb(46, 125, 50));
         statusView = label(col, "", 16, false);

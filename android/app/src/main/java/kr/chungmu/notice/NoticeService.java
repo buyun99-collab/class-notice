@@ -340,7 +340,7 @@ public class NoticeService extends Service {
                 JSONObject st = new JSONObject();
                 st.put("dev", Prefs.devId(ctx));
                 st.put("room", Prefs.room(ctx));
-                st.put("ver", "1.5");
+                st.put("ver", "1.6");
                 st.put("overlay", OverlayPopup.canShow(ctx));
                 st.put("model", Build.MANUFACTURER + " " + Build.MODEL);
 
