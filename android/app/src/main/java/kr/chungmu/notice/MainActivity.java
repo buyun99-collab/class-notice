@@ -24,7 +24,7 @@ import android.widget.Toast;
 /** 칠판에서 한 번만 설정하는 화면 */
 public class MainActivity extends Activity {
     private final Handler h = new Handler(Looper.getMainLooper());
-    private TextView statusView, permView;
+    private TextView statusView, permView, eventView;
     private EditText serverIn, topicIn, roomIn, pinIn;
     private boolean uiReady = false;
     private String lastSeenRoom = null;
@@ -137,6 +137,25 @@ public class MainActivity extends Activity {
         button(col, "테스트 팝업 띄워 보기", () ->
                 OverlayPopup.show(getApplicationContext(), Notice.test(Prefs.room(this))));
 
+        button(col, "화면 꺼짐 시험: 누르고 10초 안에 칠판 화면을 끄세요", () -> {
+            Toast.makeText(this, "10초 뒤 팝업을 띄웁니다. 지금 칠판 화면을 대기 상태로 만드세요.", Toast.LENGTH_LONG).show();
+            final android.content.Context app = getApplicationContext();
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                NoticeService.wakeScreen(app, "화면 꺼짐 시험");
+                OverlayPopup.show(app, Notice.info("화면 꺼짐 시험", "대기 상태에서 이 화면이 보이면 성공입니다.", 30));
+            }, 10000);
+        });
+
+        android.widget.CheckBox force = new android.widget.CheckBox(this);
+        force.setText("강하게 깨우기 (대기 화면에서 공지가 안 보일 때만 켜세요)");
+        force.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        force.setChecked(Prefs.forceWake(this));
+        force.setOnCheckedChangeListener((b, v) -> Prefs.setForceWake(this, v));
+        col.addView(force);
+
+        eventView = label(col, "", 14, false);
+        eventView.setTextColor(Color.DKGRAY);
+
         TextView help = label(col,
                 "설정이 끝나면 이 화면을 닫아도 됩니다. 칠판을 껐다 켜도 자동으로 다시 대기합니다.",
                 14, false);
@@ -206,6 +225,7 @@ public class MainActivity extends Activity {
     private void refresh() {
         if (!uiReady) return;
         statusView.setText("상태: " + Prefs.status(this));
+        eventView.setText("마지막으로 받은 것: " + Prefs.lastEvent(this));
         // 관리자 페이지에서 반 이름을 원격으로 바꿨을 수 있으니, 입력 중이 아닐 때 화면에 반영
         String room = Prefs.room(this);
         if (lastSeenRoom != null && !room.equals(lastSeenRoom)) roomIn.setText(room);

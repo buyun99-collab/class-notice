@@ -52,6 +52,15 @@ final class Prefs {
 
     static void setRoom(Context c, String room) { sp(c).edit().putString("room", room.trim()).apply(); }
 
+    static boolean forceWake(Context c) { return sp(c).getBoolean("forceWake", false); }
+    static void setForceWake(Context c, boolean v) { sp(c).edit().putBoolean("forceWake", v).apply(); }
+
+    static String lastEvent(Context c) { return sp(c).getString("lastEvent", "없음"); }
+    static void setLastEvent(Context c, String s) {
+        String t = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.KOREA).format(new java.util.Date());
+        sp(c).edit().putString("lastEvent", t + "  " + s).apply();
+    }
+
     static void setLastId(Context c, String id) { sp(c).edit().putString("lastId", id).apply(); }
     static void setStatus(Context c, String s) { sp(c).edit().putString("status", s).apply(); }
 }

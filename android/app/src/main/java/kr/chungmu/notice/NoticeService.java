@@ -217,7 +217,7 @@ public class NoticeService extends Service {
             }
             if (!n.matches(Prefs.room(this))) return;
 
-            wakeScreen();
+            wakeScreen(this, "공지");
             main.post(() -> OverlayPopup.show(getApplicationContext(), n));
         } catch (Exception ignored) {
             // 형식이 맞지 않는 줄은 무시
@@ -243,7 +243,7 @@ public class NoticeService extends Service {
                 final String src = arg.optString("src", "").trim();
                 if (yt.isEmpty() && src.isEmpty()) return;
                 final boolean autoClose = arg.optBoolean("autoClose", true);
-                wakeScreen();
+                wakeScreen(this, "동영상");
                 main.post(() -> VideoOverlay.play(getApplicationContext(), yt, src, autoClose));
                 break;
             }
@@ -284,7 +284,7 @@ public class NoticeService extends Service {
                 if (!dev.equalsIgnoreCase(me) && !dev.equalsIgnoreCase("all")) return;
                 final Notice info = Notice.info("칠판 번호  " + me,
                         "반 이름: " + roomLabel(Prefs.room(this)), 30);
-                wakeScreen();
+                wakeScreen(this, "칠판 번호 확인");
                 main.post(() -> OverlayPopup.show(getApplicationContext(), info));
                 break;
             }
@@ -318,7 +318,7 @@ public class NoticeService extends Service {
                 JSONObject st = new JSONObject();
                 st.put("dev", Prefs.devId(ctx));
                 st.put("room", Prefs.room(ctx));
-                st.put("ver", "1.2");
+                st.put("ver", "1.3");
                 st.put("overlay", OverlayPopup.canShow(ctx));
                 st.put("model", Build.MANUFACTURER + " " + Build.MODEL);
 
@@ -344,16 +344,32 @@ public class NoticeService extends Service {
         }, "status-report").start();
     }
 
+    /**
+     * 화면을 켠다. 안드로이드 수준으로 화면이 꺼져 있으면 투명 화면(WakeActivity)을 띄워 켜고,
+     * 받을 때 화면이 어떤 상태였는지 기록해 둔다(문제 확인용).
+     */
     @SuppressWarnings("deprecation")
-    private void wakeScreen() {
+    static void wakeScreen(Context ctx, String what) {
+        boolean interactive = true;
         try {
-            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
-            if (pm == null) return;
-            PowerManager.WakeLock wl = pm.newWakeLock(
-                    PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP,
-                    "ClassNotice:screen");
-            wl.acquire(15000);
+            PowerManager pm = (PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
+            if (pm != null) {
+                interactive = Build.VERSION.SDK_INT >= 20 ? pm.isInteractive() : pm.isScreenOn();
+                PowerManager.WakeLock wl = pm.newWakeLock(
+                        PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP
+                                | PowerManager.ON_AFTER_RELEASE,
+                        "ClassNotice:screen");
+                wl.acquire(20000);
+            }
         } catch (Exception ignored) {}
+
+        boolean force = Prefs.forceWake(ctx);
+        if (!interactive || force) {
+            WakeActivity.wake(ctx.getApplicationContext());
+        }
+        Prefs.setLastEvent(ctx, what + " 받음 / 받을 때 화면: "
+                + (interactive ? "켜짐(안드로이드 기준)" : "꺼짐 → 화면 켜기 시도")
+                + (force && interactive ? " / 강하게 깨우기 사용" : ""));
     }
 
     private void sleep(long ms) {
