@@ -208,9 +208,22 @@ public class NoticeService extends Service {
                 Prefs.setLastId(this, id);
             }
             long time = o.optLong("time", 0);
-            if (time > 0 && System.currentTimeMillis() / 1000 - time > MAX_AGE_SEC) return;
-
             final Notice n = Notice.parse(o);
+
+            // 예약 취소는 칠판이 꺼져 있던 동안 온 것이어도 기억해 둠 (예약은 최대 3일)
+            if ("cancel".equals(n.cmd)) {
+                try {
+                    String rid = new JSONObject(o.optString("message", "{}")).optString("rid", "");
+                    if (!rid.isEmpty()) Prefs.addCancelled(this, rid);
+                } catch (Exception ignored) {}
+                return;
+            }
+            if (time > 0 && System.currentTimeMillis() / 1000 - time > MAX_AGE_SEC) return;
+            if (n.rid != null && Prefs.isCancelled(this, n.rid)) {
+                Prefs.setLastEvent(this, "취소된 예약이라 띄우지 않음");
+                return;
+            }
+
             if (n.cmd != null) {
                 handleCommand(n, o.optString("message", ""));
                 return;
@@ -327,7 +340,7 @@ public class NoticeService extends Service {
                 JSONObject st = new JSONObject();
                 st.put("dev", Prefs.devId(ctx));
                 st.put("room", Prefs.room(ctx));
-                st.put("ver", "1.4");
+                st.put("ver", "1.5");
                 st.put("overlay", OverlayPopup.canShow(ctx));
                 st.put("model", Build.MANUFACTURER + " " + Build.MODEL);
 

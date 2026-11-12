@@ -61,6 +61,29 @@ final class Prefs {
         sp(c).edit().putString("lastEvent", t + "  " + s).apply();
     }
 
+    /** 취소된 예약 번호들. "번호:시각,번호:시각" 형식, 4일 지난 것은 지움 */
+    static synchronized void addCancelled(Context c, String rid) {
+        long now = System.currentTimeMillis() / 1000;
+        StringBuilder sb = new StringBuilder(rid).append(':').append(now);
+        for (String e : sp(c).getString("cancelled", "").split(",")) {
+            int i = e.lastIndexOf(':');
+            if (i <= 0) continue;
+            try {
+                long t = Long.parseLong(e.substring(i + 1));
+                if (now - t < 4 * 86400 && !e.substring(0, i).equals(rid)) sb.append(',').append(e);
+            } catch (NumberFormatException ignored) {}
+        }
+        sp(c).edit().putString("cancelled", sb.toString()).apply();
+    }
+
+    static boolean isCancelled(Context c, String rid) {
+        for (String e : sp(c).getString("cancelled", "").split(",")) {
+            int i = e.lastIndexOf(':');
+            if (i > 0 && e.substring(0, i).equals(rid)) return true;
+        }
+        return false;
+    }
+
     static void setLastId(Context c, String id) { sp(c).edit().putString("lastId", id).apply(); }
     static void setStatus(Context c, String s) { sp(c).edit().putString("status", s).apply(); }
 }

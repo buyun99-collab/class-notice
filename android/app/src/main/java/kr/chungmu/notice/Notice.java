@@ -33,6 +33,8 @@ final class Notice {
     boolean close = false;
     /** 관리 명령 (close, ping, setroom, rename, identify). 일반 공지면 null */
     String cmd = null;
+    /** 예약 번호 (예약해서 보낸 것만). 취소되면 무시 */
+    String rid = null;
     final List<String> targets = new ArrayList<>();
 
     private static final Pattern PREFIX = Pattern.compile("^\\s*\\[([^\\]]+)\\]\\s*");
@@ -55,6 +57,8 @@ final class Notice {
                     catch (NumberFormatException ignored) {}
                 } else if (lower.equals("urgent") || lower.equals("긴급")) {
                     n.urgent = true;
+                } else if (lower.startsWith("rid:")) {
+                    n.rid = t.substring(4).trim();
                 } else if (lower.startsWith("cmd:")) {
                     n.cmd = lower.substring(4).trim();
                     n.close = n.cmd.equals("close");
