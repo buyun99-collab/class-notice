@@ -212,7 +212,7 @@ public class NoticeService extends Service {
 
             final Notice n = Notice.parse(o);
             if (n.cmd != null) {
-                handleCommand(n.cmd, o.optString("message", ""));
+                handleCommand(n, o.optString("message", ""));
                 return;
             }
             if (!n.matches(Prefs.room(this))) return;
@@ -226,7 +226,8 @@ public class NoticeService extends Service {
 
     // ---------------- 관리 명령 ----------------
 
-    private void handleCommand(String cmd, String message) {
+    private void handleCommand(Notice n, String message) {
+        String cmd = n.cmd;
         String me = Prefs.devId(this);
         JSONObject arg;
         try { arg = new JSONObject(message); } catch (Exception e) { arg = new JSONObject(); }
@@ -234,6 +235,22 @@ public class NoticeService extends Service {
         switch (cmd) {
             case "close":
                 main.post(OverlayPopup::dismiss);
+                break;
+
+            case "video": {
+                if (!n.matches(Prefs.room(this))) return;
+                final String yt = VideoOverlay.youtubeId(arg.optString("yt", ""));
+                final String src = arg.optString("src", "").trim();
+                if (yt.isEmpty() && src.isEmpty()) return;
+                final boolean autoClose = arg.optBoolean("autoClose", true);
+                wakeScreen();
+                main.post(() -> VideoOverlay.play(getApplicationContext(), yt, src, autoClose));
+                break;
+            }
+
+            case "videostop":
+                if (!n.matches(Prefs.room(this))) return;
+                main.post(VideoOverlay::stop);
                 break;
 
             case "ping":
@@ -265,10 +282,10 @@ public class NoticeService extends Service {
             case "identify": {
                 String dev = arg.optString("dev", "");
                 if (!dev.equalsIgnoreCase(me) && !dev.equalsIgnoreCase("all")) return;
-                final Notice n = Notice.info("칠판 번호  " + me,
+                final Notice info = Notice.info("칠판 번호  " + me,
                         "반 이름: " + roomLabel(Prefs.room(this)), 30);
                 wakeScreen();
-                main.post(() -> OverlayPopup.show(getApplicationContext(), n));
+                main.post(() -> OverlayPopup.show(getApplicationContext(), info));
                 break;
             }
         }
@@ -301,7 +318,7 @@ public class NoticeService extends Service {
                 JSONObject st = new JSONObject();
                 st.put("dev", Prefs.devId(ctx));
                 st.put("room", Prefs.room(ctx));
-                st.put("ver", "1.1");
+                st.put("ver", "1.2");
                 st.put("overlay", OverlayPopup.canShow(ctx));
                 st.put("model", Build.MANUFACTURER + " " + Build.MODEL);
 

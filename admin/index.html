@@ -133,6 +133,23 @@
   </section>
 
   <section class="card">
+    <h2>동영상 띄우기 (위 ‘받는 곳’으로 보냄)</h2>
+    <label for="videoUrl">유튜브 주소 또는 동영상 파일 주소</label>
+    <input type="text" id="videoUrl" placeholder="예: https://youtu.be/xxxxxxxxxxx" autocomplete="off" spellcheck="false">
+    <div class="hint" id="videoHint">학교 동영상 파일은 유튜브에 ‘일부 공개’로 올린 뒤 그 주소를 넣으면 가장 잘 됩니다.</div>
+    <label style="display:flex; align-items:center; gap:8px; color:var(--ink)">
+      <input type="checkbox" id="videoAutoClose" checked> 영상이 끝나면 자동으로 닫기
+    </label>
+    <div class="row" style="margin-top:10px">
+      <button class="send" id="playVideo" style="background:#6a1b9a">▶ 동영상 재생</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="ghost danger" id="stopVideo">■ 동영상 모두 끄기</button>
+    </div>
+    <div class="msg" id="videoMsg"></div>
+  </section>
+
+  <section class="card">
     <h2>칠판 관리</h2>
     <div class="row">
       <button class="ghost" id="loadBoards" style="flex:0; white-space:nowrap">칠판 목록 불러오기</button>
@@ -322,6 +339,47 @@
     publish({ title: "공지 닫기", message: "close", tags: ["cmd:close"] })
       .then(function () { showMsg("sendMsg", "모든 칠판의 공지를 닫았습니다.", true); })
       .catch(function (e) { showMsg("sendMsg", "보내지 못했습니다: " + e.message, false); });
+  };
+
+  // ---------- 동영상 ----------
+  function youtubeId(s) {
+    s = (s || "").trim();
+    if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+    var m = s.match(/(?:v=|youtu\.be\/|\/shorts\/|\/embed\/|\/live\/)([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : "";
+  }
+  function targetTags() { return Object.keys(selected).map(function (k) { return "to:" + k; }); }
+  function whereText() {
+    var t = Object.keys(selected);
+    return t.length ? t.map(function (k) { return k.replace(/^(\d)-\*$/, "$1학년"); }).join(", ") : "전체";
+  }
+  $("videoUrl").oninput = function () {
+    var v = $("videoUrl").value.trim(), id = youtubeId(v);
+    $("videoHint").textContent = !v ? "학교 동영상 파일은 유튜브에 ‘일부 공개’로 올린 뒤 그 주소를 넣으면 가장 잘 됩니다."
+      : id ? "유튜브 영상으로 인식했습니다 (영상 ID: " + id + ")"
+      : /^https?:\/\//.test(v) ? "동영상 파일 주소로 보냅니다. 칠판에서 열 수 있는 주소여야 합니다."
+      : "주소 형식이 올바르지 않습니다.";
+  };
+  $("playVideo").onclick = function () {
+    var v = $("videoUrl").value.trim(), id = youtubeId(v);
+    if (!id && !/^https?:\/\//.test(v)) { showMsg("videoMsg", "유튜브 주소나 동영상 파일 주소를 넣어 주세요.", false); return; }
+    var where = whereText();
+    if (!confirm("[" + where + "] 칠판에서 동영상을 소리와 함께 재생합니다. 보낼까요?")) return;
+    var arg = id ? { yt: id } : { src: v };
+    arg.autoClose = $("videoAutoClose").checked;
+    publish({ title: "동영상 재생", message: JSON.stringify(arg), tags: ["cmd:video"].concat(targetTags()) })
+      .then(function () {
+        showMsg("videoMsg", "재생 명령을 보냈습니다 → " + where, true);
+        history.unshift({ at: Date.now(), title: "▶ 동영상" + (id ? " (유튜브 " + id + ")" : ""), where: where, urgent: false });
+        history = history.slice(0, 20); store.set("history", history); drawHistory();
+      })
+      .catch(function (e) { showMsg("videoMsg", "보내지 못했습니다: " + e.message, false); });
+  };
+  $("stopVideo").onclick = function () {
+    var where = whereText();
+    publish({ title: "동영상 끄기", message: "{}", tags: ["cmd:videostop"].concat(targetTags()) })
+      .then(function () { showMsg("videoMsg", "동영상을 껐습니다 → " + where, true); })
+      .catch(function (e) { showMsg("videoMsg", "보내지 못했습니다: " + e.message, false); });
   };
 
   // ---------- 칠판 관리 ----------
