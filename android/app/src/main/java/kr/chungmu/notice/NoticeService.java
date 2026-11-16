@@ -340,7 +340,7 @@ public class NoticeService extends Service {
                 JSONObject st = new JSONObject();
                 st.put("dev", Prefs.devId(ctx));
                 st.put("room", Prefs.room(ctx));
-                st.put("ver", "1.7");
+                st.put("ver", "1.8");
                 st.put("overlay", OverlayPopup.canShow(ctx));
                 st.put("model", Build.MANUFACTURER + " " + Build.MODEL);
 
@@ -390,7 +390,7 @@ public class NoticeService extends Service {
             WakeActivity.wake(ctx.getApplicationContext());
         }
         // 제조사 자체 절전(두 번 터치로 깨우는 방식) 대비: 공지 창이 뜬 뒤 화면을 두 번 두드림
-        boolean tapOn = WakeTapService.isEnabled(ctx);
+        boolean tapOn = WakeTapService.isEnabled(ctx) && OverlayPopup.canShow(ctx);
         if (tapOn) {
             new android.os.Handler(android.os.Looper.getMainLooper())
                     .postDelayed(WakeTapService::doubleTap, 800);

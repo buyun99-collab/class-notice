@@ -180,6 +180,8 @@ final class OverlayPopup {
         }
     }
 
+    static boolean isShowing() { return current != null; }
+
     static void dismiss() {
         H.removeCallbacks(TICK);
         if (current != null && wm != null) {

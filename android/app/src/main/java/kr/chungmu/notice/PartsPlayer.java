@@ -225,6 +225,8 @@ final class PartsPlayer {
         }
     }
 
+    static boolean isShowing() { return current != null; }
+
     /** 이 화면만 닫기 (VideoOverlay.stop()에서 불림) */
     static void stopOnly() {
         generation++;

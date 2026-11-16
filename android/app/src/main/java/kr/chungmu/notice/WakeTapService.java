@@ -59,6 +59,12 @@ public class WakeTapService extends AccessibilityService {
     static boolean doubleTap() {
         WakeTapService s = instance;
         if (s == null || Build.VERSION.SDK_INT < 24) return false;
+        // 우리 공지나 동영상 창이 화면을 덮고 있을 때만 두드린다.
+        // 창이 없으면 두드림이 바탕화면이나 다른 앱에 닿아 엉뚱한 프로그램이 열릴 수 있음
+        if (!OverlayPopup.isShowing() && !VideoOverlay.isPlaying() && !PartsPlayer.isShowing()) {
+            Prefs.setLastEvent(s, "공지 창이 없어 두 번 두드리기를 건너뜀 (‘다른 앱 위에 표시’ 권한 확인)");
+            return false;
+        }
         try {
             int w = s.getResources().getDisplayMetrics().widthPixels;
             int h = s.getResources().getDisplayMetrics().heightPixels;
