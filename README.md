@@ -70,6 +70,17 @@ PC에서만 쓸 거라면 `admin/index.html` 파일을 크롬으로 바로 열�
 adb shell appops set kr.chungmu.notice SYSTEM_ALERT_WINDOW allow
 ```
 
+### 대기(검은 화면) 상태에서 공지가 소리만 나고 안 보일 때
+
+일부 칠판(예: 이솔정보통신 제품)은 안드로이드 화면 끄기가 아니라 제조사 자체 절전을 써서, 화면을 ‘두 번 터치’해야 깨어납니다. 이런 칠판은 앱의 ‘③ 화면 깨우기(두 번 두드리기) 켜기’를 눌러 접근성 설정에서 ‘교실 공지 알림 화면 깨우기’를 켜 주세요. 공지가 오면 앱이 화면 왼쪽 위 빈 곳을 두 번 두드려 칠판을 깨웁니다. 화면 내용을 읽거나 다른 동작은 하지 않습니다.
+
+접근성 설정 화면이 없는 칠판은 PC에 연결해 아래 명령으로 켤 수 있습니다.
+
+```
+adb shell settings put secure enabled_accessibility_services kr.chungmu.notice/kr.chungmu.notice.WakeTapService
+adb shell settings put secure accessibility_enabled 1
+```
+
 ## 7. 공지 보내기
 
 ### 관리자 페이지 (PC, 휴대폰)

@@ -340,7 +340,7 @@ public class NoticeService extends Service {
                 JSONObject st = new JSONObject();
                 st.put("dev", Prefs.devId(ctx));
                 st.put("room", Prefs.room(ctx));
-                st.put("ver", "1.6");
+                st.put("ver", "1.7");
                 st.put("overlay", OverlayPopup.canShow(ctx));
                 st.put("model", Build.MANUFACTURER + " " + Build.MODEL);
 
@@ -389,9 +389,16 @@ public class NoticeService extends Service {
         if (!interactive || force) {
             WakeActivity.wake(ctx.getApplicationContext());
         }
+        // 제조사 자체 절전(두 번 터치로 깨우는 방식) 대비: 공지 창이 뜬 뒤 화면을 두 번 두드림
+        boolean tapOn = WakeTapService.isEnabled(ctx);
+        if (tapOn) {
+            new android.os.Handler(android.os.Looper.getMainLooper())
+                    .postDelayed(WakeTapService::doubleTap, 800);
+        }
         Prefs.setLastEvent(ctx, what + " 받음 / 받을 때 화면: "
                 + (interactive ? "켜짐(안드로이드 기준)" : "꺼짐 → 화면 켜기 시도")
-                + (force && interactive ? " / 강하게 깨우기 사용" : ""));
+                + (force && interactive ? " / 강하게 깨우기 사용" : "")
+                + (tapOn ? " / 두 번 두드리기 사용" : ""));
     }
 
     private void sleep(long ms) {

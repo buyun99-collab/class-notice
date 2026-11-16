@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wake_tap_label">교실 공지 알림 화면 깨우기</string>
+    <string name="wake_tap_desc">공지나 동영상이 왔을 때 대기 상태의 칠판 화면을 두 번 두드려 깨웁니다. 화면 내용을 읽거나 다른 동작은 하지 않습니다.</string>
+</resources>

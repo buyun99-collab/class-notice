@@ -136,6 +136,7 @@ public class MainActivity extends Activity {
         button(col, "저장하고 대기 시작", this::save);
         button(col, "① ‘다른 앱 위에 표시’ 권한 허용하기", this::openOverlaySetting);
         button(col, "② 배터리 최적화에서 제외하기", this::openBatterySetting);
+        button(col, "③ 화면 깨우기(두 번 두드리기) 켜기: 접근성에서 ‘교실 공지 알림’ 켜기", this::openAccessibility);
         button(col, "테스트 팝업 띄워 보기", () ->
                 OverlayPopup.show(getApplicationContext(), Notice.test(Prefs.room(this))));
 
@@ -215,6 +216,15 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void openAccessibility() {
+        try {
+            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+            Toast.makeText(this, "목록에서 ‘교실 공지 알림 화면 깨우기’를 찾아 켜 주세요", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "접근성 설정을 열 수 없습니다. 안내서의 adb 방법을 참고하세요.", Toast.LENGTH_LONG).show();
+        }
+    }
+
     private void openAppDetails() {
         try {
             startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
@@ -239,6 +249,9 @@ public class MainActivity extends Activity {
             boolean ok = pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
             sb.append("\n").append(ok ? "✔ 배터리 최적화: 제외됨" : "△ 배터리 최적화: 제외 권장 (②번 버튼)");
         }
+        sb.append("\n").append(WakeTapService.isEnabled(this)
+                ? "✔ 화면 깨우기(두 번 두드리기): 켜짐"
+                : "△ 화면 깨우기(두 번 두드리기): 꺼짐 (대기 화면에서 공지가 안 보이면 ③번 버튼)");
         permView.setText(sb.toString());
     }
 
